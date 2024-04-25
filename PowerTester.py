@@ -22,7 +22,7 @@ class PowerTester:
     def __init__(self, config_file):
         self.oscilloscope = 0
         self.load = 0
-        self.powersupply = 0
+        self.power_supply = 0
         self.config=0
         self.doc=Document()
         self.folder_path=0
@@ -49,6 +49,60 @@ class PowerTester:
         self.doc.add_paragraph(f'Time: {test_date}\nDUT: {dut}')
         self.doc_path=f'{self.folder_path}/{dut} {test_name} {test_date}.docx'
         self.doc.save(self.doc_path)
+
+    def instrument_connection(self):
+        self.doc.add_heading(f'Test Instrument',level=2)
+        #Oscilloscope connection
+        self.doc.add_heading(f'Oscilloscope',level=3)
+        self.oscilloscope = Oscilloscope(self.config['test_devices']['oscilloscope']['path'])
+        self.doc.add_paragraph(f'idn:{self.oscilloscope.get_IDN()}')
+        #Power Supply connection
+        self.doc.add_heading(f'DC Power Supply',level=3)
+        self.power_supply = PSU_6705(self.config['test_devices']['power_supply']['path'])
+        self.doc.add_paragraph(f'idn:{self.power_supply.get_IDN()}')
+        #Load connection
+        self.doc.add_heading(f'Load',level=3)
+        self.load = ElectronicLoad(self.config['test_devices']['load']['path'])
+        self.doc.add_paragraph(f'idn:{self.load.get_IDN()}')
+        #Save test intrument idn to file
+        self.doc.save(self.doc_path)
+       
+    def instrument_init_config(self):
+        self.load_init_config()
+        self.osc_init_config()
+        self.dcps_init_config()
+
+    def load_init_config(self):
+        #TODO should be configured by what?
+        load_settings = self.config['test_devices']['load']['settings']
+        self.load.off()
+        self.load.set_mode(load_settings.get("function"),load_settings.get("value"))
+        
+    def osc_init_config(self):
+        #print("osc_init_config")
+        #initializing channels
+        channel_settings = self.config['test_devices']['oscilloscope']['channel_settings']
+        for channel, settings in channel_settings.items():
+            self.oscilloscope.channel_on(channel)
+            if 'coupling' in settings:
+                self.oscilloscope.set_coupling(channel, settings['coupling'])
+            else:
+                self.oscilloscope.set_coupling(channel, 'DC')
+            if 'bandwidth' in settings:
+                self.oscilloscope.set_bandwidth(channel,settings['bandwidth'])
+            else:
+                self.oscilloscope.set_bandwidth(channel,'FULL')
+        # adding measurements
+        measurement_settings = self.config['test_devices']['oscilloscope']['measurement_settings']
+        for measurement, settings in measurement_settings.items():
+            self.oscilloscope.add_measurement(measurement,settings['channel'], settings['type'])
+       
+    def dcps_init_config(self):
+        settings=self.config['test_devices']['power_supply']['settings']
+        self.power_supply.off()
+        self.power_supply.set_value(1,'v',settings['input_voltage'])
+        self.power_supply.set_value(1,'c',settings['input_current'])
+        self.power_supply.set_value(2,'v',settings['testbord_supply'])
 
     def power_test(self):
         #TODO
@@ -83,7 +137,7 @@ class PowerTester:
             vo_list.append(output_v)
             co_list.append(output_c)
             
-            input_status=self.powersupply.status_inquire()
+            input_status=self.power_supply.status_inquire()
             #input_v=input_status.get('ch1_out_voltage')
             # TODO: how to scale?
             # FIXME: how to get the value?
@@ -249,52 +303,11 @@ class PowerTester:
         pass
 
 
-    def instrument_connection(self):
-        self.oscilloscope = Oscilloscope(self.config['test_devices']['oscilloscope']['path'])
-        self.powersupply = PSU_6705(self.config['test_devices']['power_supply']['path'])
-        self.load = ElectronicLoad(self.config['test_devices']['load']['path'])
-       
-    def instrument_init_config(self):
-        self.load_init_config()
-        self.osc_init_config()
-        self.dcps_init_config()
-
-    def load_init_config(self):
-        #print("load_init_config")
-        load_settings = self.config['test_devices']['load']['settings']
-        self.load.off()
-        self.load.set_mode(load_settings.get("function"),load_settings.get("value"))
-        
-    def osc_init_config(self):
-        #print("osc_init_config")
-        #initializing channels
-        channel_settings = self.config['test_devices']['oscilloscope']['channel_settings']
-        for channel, settings in channel_settings.items():
-            self.oscilloscope.channel_on(channel)
-            if 'coupling' in settings:
-                self.oscilloscope.set_coupling(channel, settings['coupling'])
-            else:
-                self.oscilloscope.set_coupling(channel, 'DC')
-            if 'bandwidth' in settings:
-                self.oscilloscope.set_bandwidth(channel,settings['bandwidth'])
-            else:
-                self.oscilloscope.set_bandwidth(channel,'FULL')
-        # adding measurements
-        measurement_settings = self.config['test_devices']['oscilloscope']['measurement_settings']
-        for measurement, settings in measurement_settings.items():
-            self.oscilloscope.add_measurement(measurement,settings['channel'], settings['type'])
-       
-    def dcps_init_config(self):
-        settings=self.config['test_devices']['power_supply']['settings']
-        self.powersupply.off()
-        self.powersupply.set_value(1,'v',settings['input_voltage'])
-        self.powersupply.set_value(1,'c',settings['input_current'])
-        self.powersupply.set_value(2,'v',settings['testbord_supply'])
 
     def end_test(self):
         self.load.load.close()
         self.oscilloscope.scope.close()
-        self.powersupply.close()
+        self.power_supply.close()
         print("Test ended")
         
         

@@ -25,6 +25,9 @@ class PSU_6705:
   
         if self.ser.isOpen():
             print(f"DC Power Supply 6705 at serial {port} is open")
+    
+    def get_IDN():
+        return "PeakTech 6705 DC Power Supply"
 
     def close(self):
         self.ser.close()
@@ -136,6 +139,7 @@ class PSU_6705:
         byte_command = bytes.fromhex(command[2:])
         self.ser.write(byte_command)       
 
+    #TODO write this funciton!
     def set_connection(self):
         print("sorry I didn't write")
         set_series_command='0xF7020A1F010001F893FD'

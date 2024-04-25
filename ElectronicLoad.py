@@ -3,7 +3,7 @@
 
 # In[2]:
 
-
+#Based on Tenma 72 13210 electronic load
 import pyvisa as visa
 
 class ElectronicLoad:

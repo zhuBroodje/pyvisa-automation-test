@@ -1,0 +1,74 @@
+
+test_configuration: 
+  test_name: PowerTest
+  default:
+    min_current: 0.0001 #A
+    max_current: 1 #A
+    sample_num: 10 #points
+    sample_scale: linear
+  efficiency: 
+    sample_scale: log
+  load regulation: 
+  switch frequency: 
+  ripple: 
+  power sequence: 
+
+
+test_devices:
+  oscilloscope: 
+    path: 'USB0::0x0699::0x0401::C020996::INSTR'
+
+    channel_settings:
+      1:
+        signal: "input DC"
+        coupling: "DC" 
+      2: 
+        signal: "output DC"
+        coupling: "DC"
+      3: 
+        signal: "output AC"
+        coupling: "AC"
+        bandwidth: "20MHz" #{TWEnty|TWOfifty|FULl|<NR3>}
+      #4: null
+      
+    measurement_settings:
+      1:
+        signal: "input DC RMS"
+        channel: 1
+        type:  "RMS"
+      2: 
+        signal: "output DC RMS"
+        channel: 2
+        type:  "RMS"
+      3:
+        signal: "output ripple peak2peak"
+        channel: 3
+        type:  "PK2PK"
+      4:
+        signal: "output switch frequency"
+        channel: 3
+        type:  "FREQUENCY"        
+      #...
+      #meas6:
+
+  load:
+    path: "COM9"
+    settings:
+      function: "C"
+      value: 1
+  
+  power_supply: 
+    path: "COM11"
+    settings:
+      input_voltage: 12 #V
+      input_current: 1 #A
+      testbord_supply: 5
+
+DUT:
+  device_name: Aggragator DCDC Converter
+  input: 12 #V
+  output: 5 #V
+  min_load: 0.01 #A
+  max_load: 1 #A
+  sample_num: 20 #points
+  
