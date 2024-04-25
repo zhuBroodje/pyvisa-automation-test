@@ -3,11 +3,13 @@
 
 # In[1]:
 
+#This is wriiten based on Tektronix DPO4000 series Digital Oscilloscopes
+
 import matplotlib.pyplot as plt
 import pyvisa as visa
 import time
 import numpy as np
-from scipy.interpolate import interp1d
+
 
 # class DPO4000Series(Oscilloscope):
 #     def __init__(self, model):
@@ -19,8 +21,6 @@ from scipy.interpolate import interp1d
 
 class Oscilloscope:
     def __init__(self,oscilloscope_path,channel_num=4):
-        #self.rm=rm
-        #self.scope = self.rm.open_resource(oscilloscope_path)
         self.scope = visa.ResourceManager().open_resource(oscilloscope_path)
         self.scope.write("*RST")
         self.scope.encoding = 'latin_1'
@@ -75,7 +75,6 @@ class Oscilloscope:
         command = f"DATA:SOURCE CH{channel}"
         self.write(command)
         self.write("DATA:ENCdg ASCII")
-        #bin_wave = self.scope.query_binary_values('curve?', datatype='b', container=np.array)
         bin_wave = self.scope.query_ascii_values('CURV?')
         # retrieve scaling factors
         tscale = float(self.query("WFMOUTPRE:XINcr?"))
@@ -133,6 +132,7 @@ class Oscilloscope:
         scaled_wave = (unscaled_wave - vpos) * vscale + voff
         return scaled_wave,time_space
     
+    #FIXME not compledted
     def get_waveform_all(self):
         print("write this function!!!")
         self.write("DATA:ENCdg ASCII")
@@ -187,9 +187,6 @@ class Oscilloscope:
             current_scale=self.query(f'CH{channel}:SCALE?')
             current_scale_value=float(current_scale)
             value=float(self.query(':MEASUREMENT:Immed:vALUE?'))
-            """ if value==0:
-                break """
-            #print(value)
             mul=0
             div=0
             new_scale=0.
@@ -406,5 +403,8 @@ class Oscilloscope:
        self.write(f"SELECT:CH{channel} ON")    
     def channel_off(self,channel):
        self.write(f"SELECT:CH{channel} OFF")    
+
+    def get_channel_number():
+        return 4
 # %%
 
