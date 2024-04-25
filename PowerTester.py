@@ -7,7 +7,6 @@
 import time
 import matplotlib.pyplot as plt
 import numpy as np
-import pyvisa as visa
 import yaml
 
 from Oscilloscope import *
@@ -17,6 +16,7 @@ from ElectronicLoad import *
 from docx import Document
 from docx.shared import Inches
 from datetime import datetime
+import os
 
 class PowerTester:
     def __init__(self, config_file):
@@ -25,26 +25,30 @@ class PowerTester:
         self.powersupply = 0
         self.config=0
         self.doc=Document()
+        self.folder_path=0
+        self.doc_path=0
 
-        with open(config_file, 'r') as file:
-            config = yaml.safe_load(file)
-            self.config = config
-        
-        #Generating document
-        test_name=self.config['test_content']['test_name']
-        current_date=datetime.now()
-        test_date=current_date.strftime("%Y-%m-%d-%H%M")
-        dut=self.config['DUT']['name']
-        self.doc.save(f'{dut} {test_name} {test_date}.docx')
-        self.doc.add_heading(f'{test_name}',level=1)
-        self.doc.add_paragraph(f'Time: {test_date}\nDUT: {dut}')
-        self.doc_path=f'{dut} {test_name} {test_date}.docx'
-        self.doc.save(self.doc_path)
-
+        self.generate_record_file(config_file) 
         #Configure connection
         self.instrument_connection()
         #TODO: record instrument information
         self.instrument_init_config()
+
+    def generate_record_file(self,config_file):
+        with open(config_file, 'r') as file:
+            config = yaml.safe_load(file)
+            self.config = config
+        test_name=self.config['test_content']['test_name']
+        current_date=datetime.now()
+        test_date=current_date.strftime("%Y-%m-%d-%H%M")
+        dut=self.config['DUT']['name']
+        self.folder_path = f'{dut} {test_name} {test_date}'
+        os.makedirs(self.folder_path)  
+        self.doc.save(f'{dut} {test_name} {test_date}.docx')
+        self.doc.add_heading(f'{test_name}',level=1)
+        self.doc.add_paragraph(f'Time: {test_date}\nDUT: {dut}')
+        self.doc_path=f'{self.folder_path}/{dut} {test_name} {test_date}.docx'
+        self.doc.save(self.doc_path)
 
     def power_test(self):
         #TODO

@@ -8,7 +8,7 @@ import serial
 import struct
 import time
 
-#special written for hightech 6705 dc power supply
+#written for hightech 6705 dc power supply
 class PSU_6705:
     def __init__(self, port):
         self.ser = serial.Serial(port, 9600)
