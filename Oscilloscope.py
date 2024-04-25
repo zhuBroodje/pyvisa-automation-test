@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import pyvisa as visa
 import time
 import numpy as np
-
+from scipy.interpolate import interp1d
 
 # class DPO4000Series(Oscilloscope):
 #     def __init__(self, model):
