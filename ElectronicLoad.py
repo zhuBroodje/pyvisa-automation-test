@@ -30,13 +30,13 @@ class ElectronicLoad:
         check=True
         command=''
         if mode.upper()=="C":
-            command = f":CURRENT {value}A"
+            command = f":CURR {value}A"
         elif mode.upper()=="V":
-            command = f":VOLTAGE {value}V"
+            command = f":VOLT {value}V"
         elif mode.upper()=="P":
-            command = f":POWER {value}W"
+            command = f":POW {value}W"
         elif mode.upper()=="R":
-            command = f":RESISTANCE {value}HM"
+            command = f":RES {value}HM"
         else:
             check=False
         if check:
@@ -78,6 +78,8 @@ class ElectronicLoad:
     def off(self):
         self.load.write(":INPut OFF")
 
+    def get_precision(self):
+        return 4
 # In[ ]:
 
 
