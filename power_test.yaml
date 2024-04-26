@@ -2,14 +2,17 @@
 test_configuration: 
   test_name: PowerTest
   default:
-    min_current: 0.0001 #A
-    max_current: 1 #A
+    min_load: 0.0001 #A
+    max_load: 1 #A
     sample_num: 10 #points
     sample_scale: linear
   efficiency: 
+    min_load: 0.01
     sample_scale: log
   load regulation: 
   switch frequency: 
+    min_load: 0.1
+    sample_scale: linear
   ripple: 
   power sequence: 
 
@@ -20,33 +23,33 @@ test_devices:
 
     channel_settings:
       1:
-        signal: "input DC"
-        coupling: "DC" 
+        signal: "input 12V"
+        #coupling: "DC" 
       2: 
-        signal: "output DC"
-        coupling: "DC"
-      3: 
-        signal: "output AC"
-        coupling: "AC"
-        bandwidth: "20MHz" #{TWEnty|TWOfifty|FULl|<NR3>}
+        signal: "output 5V"
+        #coupling: "DC"
+     # 3: 
+     #   signal: "output AC"
+     #   coupling: "AC"
+     #   bandwidth: "20MHz" #{TWEnty|TWOfifty|FULl|<NR3>}
       #4: null
       
     measurement_settings:
       1:
-        signal: "input DC RMS"
+        signal: "input DC MEAN"
         channel: 1
-        type:  "RMS"
+        type:  "MEAN"
       2: 
-        signal: "output DC RMS"
+        signal: "output DC MEAN"
         channel: 2
-        type:  "RMS"
+        type:  "MEAN"
       3:
         signal: "output ripple peak2peak"
-        channel: 3
+        channel: 2
         type:  "PK2PK"
       4:
         signal: "output switch frequency"
-        channel: 3
+        channel: 2
         type:  "FREQUENCY"        
       #...
       #meas6:
@@ -58,11 +61,12 @@ test_devices:
       value: 1
   
   power_supply: 
-    path: "COM11"
+    path: "COM12"
     settings:
       input_voltage: 12 #V
       input_current: 1 #A
-      testbord_supply: 5
+      testbord_supply: 5 #V
+      testbord_supply_current: 1 #A
 
 DUT:
   device_name: Aggragator DCDC Converter

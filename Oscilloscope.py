@@ -272,8 +272,8 @@ class Oscilloscope:
             new_scale=0
             if value>1000 :
                 pass
-                #new_scale=current_scale_value*mul               
-                #self.write(f'HORizontal:SCALE {new_scale}') 
+                new_scale=current_scale_value*mul               
+                self.write(f'HORizontal:SCALE {new_scale}') 
                 time.sleep(0.3)
             elif value<1E-6:
                 #new_scale=current_scale_value*mul      

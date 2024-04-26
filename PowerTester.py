@@ -31,20 +31,147 @@ class PowerTester:
         self.generate_record_file(config_file) 
         #Configure connection
         self.instrument_connection()
-        #TODO: record instrument information
         self.instrument_init_config()
+
+
+    def test_flow(self):
+        #TODO
+        self.load.on()
+        self.power_supply.on()
+        #self.set_dc_test_mode()
+        #self.efficiency_current()
+        #self.load_regulation()
+        #TODO
+        #FIXME: channel selection
+        self.set_ac_test_mode()
+        #self.swtich_frequency()
+        self.ripple()
+        #self.power_sequence()
+
+
+    #TODO
+    def set_ac_test_mode(self):
+        #FIXME: use filter?   
+        #FIXME: selecte channel
+        self.oscilloscope.set_coupling(2,"AC")
+        #FIXME
+        #self.oscilloscope.set_acquire_mode('SAMple')
+      
+
+    def swtich_frequency(self):
+        self.oscilloscope.set_acquire_mode("SAMple")
+        #FIXME channel
+        self.oscilloscope.set_bandwidth(2,'TWEnty')
+        #FIXME channel
+        self.oscilloscope.set_trigger_a_edge_source(2)
+        self.oscilloscope.set_trigger_a_edge_coupling('HFRej')
+      
+        #FIXME ONLY VALID FOR FIXED FREQUENCY
+        self.doc.add_heading(f'Switch Frequency vs load current',level=2)
+        sample_points,scale=self.generate_sample_points('switch frequency')
+        sample_points=np.round(sample_points,self.load.get_precision())
+        fo_list,co_list=[],[]
+        self.load.on()
+        for i in range(len(sample_points)):
+            self.load.set_mode('c',sample_points[i])
+            time.sleep(2)
+            #FIXME how to scale
+            self.oscilloscope.auto_scale(2,False)
+            #FIXME how to get value
+            #output_f=oscilloscope.get_measurement(5)
+            #FIXME channel?
+            output_f=self.oscilloscope.get_frequency(2)
+            output_c=self.load.get_current_current()
+            #Debug
+            print(f"output {output_f}Hz {output_c}A")
+            fo_list.append(float(output_f))
+            co_list.append(float(output_c))
+
+        plt.figure(figsize=(10, 5))
+        plt.plot(co_list, fo_list)
+        plt.grid(True)
+        #FIXME scale?
+        plt.xscale(scale)
+        plt.yscale('log')
+        plt.yticks(fo_list,fo_list)
+        plt.xscale(scale)
+        x_tick_values = np.linspace(0, max(co_list), 5)
+        plt.xticks(x_tick_values, ['{:.2f}'.format(value) for value in x_tick_values])
+        plt.title(f"Switch frequency vs Load current (Vin={self.config['DUT']['input']}V,Vout={self.config['DUT']['ouput']}V)")
+        plt.ylabel('Freuquency(Hz)')
+        plt.xlabel('I_LOAD (A)')
+        plt.savefig('Switch frequency vs Load current.png')
+        self.doc.add_picture('Switch frequency vs Load current.png', width=Inches(4))
+        self.doc.save(self.doc_path)
+            
+
+    def ripple(self):
+        #FIXME 
+        self.oscilloscope.set_acquire_mode('SAMple')
+        self.oscilloscope.set_trigger_a_edge_coupling('AC')
+        self.oscilloscope.set_trigger_a_edge_source(2)
+        self.oscilloscope.set_bandwidth(2,'TWEnty')
+        self.oscilloscope.set_trigger_a_edge_coupling('HFRej')
+        sample_points,scale=self.generate_sample_points('ripple')
+        #FIXME how to get precision
+        sample_points=np.round(sample_points,self.load.get_precision())
+        vo_list,co_list,p_list=[],[],[]
+        for i in range (len(sample_points)):
+            self.load.set_mode('C',sample_points[i])
+            time.sleep(2)
+            #FIXME aaaaa
+            self.oscilloscope.auto_scale(2,False)
+            output_c=self.load.get_current_current()
+            #FIXME how to get? wrong ripple measuremen!
+            output_v=self.oscilloscope.measure_ripple(2)
+            print(f"output {output_v} {output_c}")
+            vo_list.append(output_v)
+            co_list.append(output_c)
+            #FIXME
+            w,t=self.oscilloscope.get_waveform_data(2)
+            data = np.vstack((w, t)).T
+            name=f"waveform-current {output_c}A.txt"
+            np.savetxt(name, data)
+            #TODO show figures我好懒
+            #md 烦了
+        vo=self.config['DUT']['output']
+        for v in vo_list:
+            p=v/vo*100
+            p_list.append(p)
+        #p_list=vo_list/vo*100 #ripple/output DC value
+        #debug
+        print(vo_list,co_list,p_list)
+
+    def power_sequence(self):
+        #POWER ON
+        #FIXME channel?
+        self.oscilloscope.channel_off(3)
+        self.oscilloscope.set_offset(1,0)
+        self.oscilloscope.write('CH1:POSITION 0') 
+
+        self.oscilloscope.write("TRIGGER:A:EDGE:SOURCE CH1")
+        self.oscilloscope.write("TRIGGER:A:EDGE:SLOPE RISE")
+
+        self.oscilloscope.set_offset(2,0)
+        self.oscilloscope.set_t_scale(0.02)
+        #self.oscilloscope.auto_y_scale(1)
+        #self.oscilloscope.auto_y_scale(2)
+        self.psu.off()
+        self.load.off()
+
+        #POWER OFF
+        pass
 
     def generate_record_file(self,config_file):
         with open(config_file, 'r') as file:
             config = yaml.safe_load(file)
             self.config = config
-        test_name=self.config['test_content']['test_name']
+        test_name=self.config['test_configuration']['test_name']
         current_date=datetime.now()
         test_date=current_date.strftime("%Y-%m-%d-%H%M")
-        dut=self.config['DUT']['name']
+        dut=self.config['DUT']['device_name']
         self.folder_path = f'{dut} {test_name} {test_date}'
         os.makedirs(self.folder_path)  
-        self.doc.save(f'{dut} {test_name} {test_date}.docx')
         self.doc.add_heading(f'{test_name}',level=1)
         self.doc.add_paragraph(f'Time: {test_date}\nDUT: {dut}')
         self.doc_path=f'{self.folder_path}/{dut} {test_name} {test_date}.docx'
@@ -74,12 +201,11 @@ class PowerTester:
 
     def load_init_config(self):
         #TODO should be configured by what?
-        load_settings = self.config['test_devices']['load']['settings']
+        #load_settings = self.config['test_devices']['load']['settings']
         self.load.off()
-        self.load.set_mode(load_settings.get("function"),load_settings.get("value"))
+        self.load.set_function('c')
         
     def osc_init_config(self):
-        #print("osc_init_config")
         #initializing channels
         channel_settings = self.config['test_devices']['oscilloscope']['channel_settings']
         for channel, settings in channel_settings.items():
@@ -103,32 +229,36 @@ class PowerTester:
         self.power_supply.set_value(1,'v',settings['input_voltage'])
         self.power_supply.set_value(1,'c',settings['input_current'])
         self.power_supply.set_value(2,'v',settings['testbord_supply'])
+        self.power_supply.set_value(2,'c',settings['testbord_supply_current'])
 
-    def power_test(self):
-        #TODO
-        self.set_dc_test_mode()
-        self.efficiency_current()
-        self.load_regulation()
-        #TODO
-        #FIXME: channel selection
-        self.set_ac_test_mode(3)
-        self.swtich_frequency()
-        self.ripple()
-        self.power_sequence()
+    def set_dc_test_mode(self):
+        #FIXME select channel
+        self.oscilloscope.set_t_scale(0.002)
+        self.oscilloscope.auto_y_scale(1)
+        self.oscilloscope.auto_y_scale(2)
+        #no multimeter is used, so use oscilloscope and electronicload to read value for now
+        pass # already initialized by  instrument_init_config
+
+    def end_test(self):
+        self.load.load.close()
+        self.oscilloscope.scope.close()
+        self.power_supply.close()
+        print("Test ended")
+        
+ 
 
     def efficiency_current(self):
         self.doc.add_heading(f'Effiency vs load current',level=2)
-
-        sample_points= self.generate_sample_points('efficiency')
-        sample_points=np.round(sample_points,4) # Notes: should get precision from instruments, 4 is only for this load
+        #Note : for debug
+        print("efficiency vs current")
+        sample_points,scale= self.generate_sample_points('efficiency')
+        sample_points=np.round(sample_points,self.load.get_precision()) # Notes: should get precision from instruments, 4 is only for this load
+        
         vo_list, co_list, vi_list, ci_list = [], [], [], []
         #Note: Maybe logging?
         for i in range (len(sample_points)):
             self.load.set_mode('C',sample_points[i])
-            #self.load.write(f":CURRent {rounded_number[i]}A" )
             time.sleep(2) #wait for value stablized
-            # TODO: how to scale?
-            # FIXME: how to get the value?
             output_v=self.oscilloscope.get_measurement(2)
             #output_v=self.load.get_current_voltage()
             output_c=self.load.get_current_current()
@@ -147,7 +277,8 @@ class PowerTester:
             print(f"input {input_v} {input_c}")
             vi_list.append(input_v)
             ci_list.append(input_c)
-
+        #FIXME 
+        #incase input_c read 0, truncate those samples
         vo_array, co_array, vi_array, ci_array = np.array(vo_list), np.array(co_list), np.array(vi_list), np.array(ci_list)
         po_array, pi_array = vo_array * co_array, vi_array * ci_array
         efficiency=po_array/pi_array *100
@@ -156,9 +287,9 @@ class PowerTester:
 
         plt.figure(figsize=(10, 5))
         plt.plot(co_list, efficiency)
-        plt.xscale('log')
+        plt.xscale(scale)     
         plt.grid(True)
-        plt.title(f'Efficiency vs Load current (Vin={self.config['DUT']['input']}V,Vout={self.config['DUT']['ouput']}V)')
+        plt.title(f"Efficiency vs Load current (Vin={self.config['DUT']['input']}V,Vout={self.config['DUT']['output']}V)")
         plt.ylabel('Efficiency(%)')
         plt.xlabel('I_LOAD (A)')
         plt.savefig('Efficiency vs Load current.png')
@@ -170,147 +301,45 @@ class PowerTester:
             return np.logspace(np.log10(start), np.log10(end), num)  
         elif scale=='linear' :
             return np.linspace(start, end, num)
-    
+        else:
+            return np.linspace(start, end, num)
     def generate_sample_points(self,update_config=''):
-        test_configuration = self.config['test_configuration']
+        test_configuration = self.config['test_configuration'].copy()
         settings=test_configuration['default']
-        if update_config in test_configuration:
-            settings.update(test_configuration[update_config])
-        min_load, max_load, sample_num,scale = [settings.get(key) for key in ['min_load', 'max_load', 'sample_num','scale']]
+        if update_config in test_configuration and test_configuration[update_config]:
+            for key, value in test_configuration[update_config].items():
+                if key is not None:
+                    settings[key]=value
+        min_load, max_load, sample_num,scale = [settings.get(key) for key in ['min_load', 'max_load', 'sample_num','sample_scale']]
+        print(min_load, max_load, sample_num,scale)
         sample_points=self.generate_points(min_load,max_load,sample_num,scale)
-        return sample_points    
+        return sample_points,scale    
         
     def load_regulation(self):
         self.doc.add_heading(f'Load regulation',level=2)
         v_list,c_list=[],[]
-        sample_points=self.generate_points('load_regulation')
+        sample_points=self.generate_sample_points('load_regulation')
         #FIXME rounded should be blabla from load
-        sample_points=np.round(sample_points,4)
+        sample_points,scale=np.round(sample_points,self.load.get_precision())
         for i in range (len(sample_points)):
             self.load.set_mode('C', sample_points[i] )
             time.sleep(2)
             v_list.append(self.load.get_current_voltage())
-            c_list.append(self.oad.get_current_current())
-        # Debug
+            c_list.append(self.load.get_current_current())
+        #Debug
         print(v_list,c_list)
         plt.figure(figsize=(10, 5))
         plt.plot(c_list, v_list)
         plt.grid(True)
-        plt.title(f'Load regulation(Vin={self.config['DUT']['input']}V,Vout={self.config['DUT']['ouput']}V)')
+        plt.xscale(scale)
+        title=f"Load regulation(Vin={self.config['DUT']['input']}V,Vout={self.config['DUT']['output']}V)"
+        plt.title(title)
         plt.ylabel('Vout (V)')
         plt.xlabel('I_LOAD (A)')
         plt.savefig('Load regulation.png')
         self.doc.add_picture('Load regulation.png', width=Inches(4))
         self.doc.save(self.doc_path)
-
-    #TODO
-    def set_ac_test_mode(self,channel):
-        self.oscilloscope.write(f"SELECT:CH{channel} ON")
-        self.oscilloscope.write(f"TRIGGER:A:EDGE:SOURCE CH{channel}")
-        #FIXME: use filter?
-        #self.oscilloscope.write("TRIGGER:A:EDGE:COUPLING HFREJ")#{DC|HFRej|LFRej|NOISErej}
-        self.oscilloscope.set_coupling(channel,"AC")
-        #FIXME: use filter?
-        #self.oscilloscope.write(f"CH{channel}:BANDWIDTH TWENTY")#{TWEnty|TWOfifty|FULl|<NR3>}
-
-
-    def swtich_frequency(self):
-        #FIXME ONLY VALID FOR FIXED FREQUENCY
-        self.doc.add_heading(f'Switch Frequency vs load current',level=2)
-        sample_points=self.generate_sample_points('switch frequency')
-        #FIXME how to get precision
-        sample_points=np.round(sample_points,4)
-        fo_list,co_list=[],[]
-        self.load.on()
-        for i in range(len(sample_points)):
-            self.load.set_mode('c',sample_points[i])
-            time.sleep(2)
-            #FIXME how to scale
-            self.oscilloscope.auto_scale(3,False)
-            #FIXME how to get value
-            #output_f=oscilloscope.get_measurement(5)
-            #FIXME channel?
-            output_f=self.oscilloscope.get_frequency(3)
-            output_c=self.load.get_current_current()
-            #Debug
-            print(f"output {output_f}Hz {output_c}A")
-            fo_list.append(float(output_f))
-            co_list.append(float(output_c))
-
-        plt.figure(figsize=(10, 5))
-        plt.plot(co_list, fo_list)
-        plt.grid(True)
-        #FIXME scale?
-        plt.yscale('log')
-        x_tick_values = np.linspace(0, max(co_list), 5)
-        plt.xticks(x_tick_values, ['{:.2f}'.format(value) for value in x_tick_values])
-        plt.title(f'Switch frequency vs Load current (Vin={self.config['DUT']['input']}V,Vout={self.config['DUT']['ouput']}V)')
-        plt.ylabel('Freuquency(Hz)')
-        plt.xlabel('I_LOAD (A)')
-        plt.savefig('Switch frequency vs Load current.png')
-        self.doc.add_picture('Switch frequency vs Load current.png', width=Inches(4))
-        self.doc.save(self.doc_path)
-            
-
-    def ripple(self):
-        #FIXME 
-        self.oscilloscope.write("ACQUIRE:MODE SAMPLE")
-        sample_points=self.generate_sample_points('ripple')
-        #FIXME how to get precision
-        sample_points=np.round(sample_points,4)
-        vo_list,co_list,p_list=[],[],[]
-        for i in range (len(sample_points)):
-            self.load.set_mode('A',sample_points[i])
-            time.sleep(2)
-            #FIXME aaaaa
-            self.oscilloscope.auto_scale(3,False)
-            output_c=self.load.get_current_current()
-            #FIXME how to get? wrong ripple measuremen!
-            output_v=self.oscilloscope.measure_ripple(3)
-            print(f"output {output_v} {output_c}")
-            vo_list.append(output_v)
-            co_list.append(output_c)
-            #FIXME
-            w,t=self.oscilloscope.get_waveform_data(3)
-            data = np.vstack((w, t)).T
-            name=f"waveform-current {output_c}A.txt"
-            np.savetxt(name, data)
-            #TODO show figures我好懒
-            #md 烦了
-        vo=self.config['DUT']['output']
-        p_list=vo_list/vo*100 #ripple/output DC value
-        #debug
-        print(vo_list,co_list,p_list)
-
-    def power_sequence(self):
-        #POWER ON
-        #FIXME channel?
-        self.oscilloscope.channel_off(3)
-        self.oscilloscope.set_offset(1,0)
-        self.oscilloscope.write('CH1:POSITION 0') 
-
-        self.oscilloscope.write("TRIGGER:A:EDGE:SOURCE CH1")
-        self.oscilloscope.write("TRIGGER:A:EDGE:SLOPE RISE")
-
-        self.oscilloscope.set_offset(2,0)
-        self.oscilloscope.set_t_scale(0.02)
-        #self.oscilloscope.auto_y_scale(1)
-        #self.oscilloscope.auto_y_scale(2)
-        self.psu.off()
-        self.load.off()
-
-        #POWER OFF
-        pass
-
-
-
-    def end_test(self):
-        self.load.load.close()
-        self.oscilloscope.scope.close()
-        self.power_supply.close()
-        print("Test ended")
-        
-        
+       
 
 
 
