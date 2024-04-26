@@ -5,6 +5,7 @@
 
 #Based on Tenma 72 13210 electronic load
 import pyvisa as visa
+from typing import Literal
 
 class ElectronicLoad:
     def __init__(self, electronic_load_path):
@@ -26,7 +27,7 @@ class ElectronicLoad:
     def get_IDN(self):
         return self.load.query("*IDN?")
     
-    def set_mode(self, mode,value):
+    def set_mode(self, mode:Literal['C','V','P','R'],value):
         check=True
         command=''
         if mode.upper()=="C":
@@ -41,7 +42,7 @@ class ElectronicLoad:
             check=False
         if check:
             self.load.write(command)
-    def set_function(self,function):
+    def set_function(self,function:Literal['C','V','P','R']):
         check=True
         command=''
         if function.upper()=="C":
@@ -79,7 +80,8 @@ class ElectronicLoad:
         self.load.write(":INPut OFF")
 
     def get_precision(self):
-        return 4
+        #3 digits decimal
+        return 3
 # In[ ]:
 
 

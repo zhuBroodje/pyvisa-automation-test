@@ -10,6 +10,9 @@ import pyvisa as visa
 import time
 import numpy as np
 from scipy.interpolate import interp1d
+from typing import Literal
+
+
 
 # class DPO4000Series(Oscilloscope):
 #     def __init__(self, model):
@@ -56,22 +59,22 @@ class Oscilloscope:
         self.write(command)
         time.sleep(0.05)
         
-    def get_measurement(self,index):
+    def get_measurement(self,index:Literal[1,2,3,4]):
         return float(self.query(f"MEASUREMENT:MEAS{index}:VALUE?"))
     
-    def set_coupling(self,channel,mode):
+    def set_coupling(self,channel:Literal[1,2,3,4],mode):
         command = f"CH{channel}:COUPLING {mode.upper()}"
         self.write(command)
 
-    def set_bandwidth(self,channel,mode):
-        command = f"CH{channel}:BANDWIDTH {mode.upper()}"#{TWEnty|TWOfifty|FULl|<NR3>}
+    def set_bandwidth(self,channel:Literal[1,2,3,4],mode:Literal['TWEnty','TWOfifty','FULl']):
+        command = f"CH{channel}:BANDWIDTH {mode.upper()}"#{|<NR3>}
         self.write(command)
     #def get_immed_value(self,TYPe)
     
     def get_IDN(self):
         return self.query("*IDN?")
     
-    def get_waveform(self,channel):
+    def get_waveform(self,channel:Literal[1,2,3,4]):
         command = f"DATA:SOURCE CH{channel}"
         self.write(command)
         self.write("DATA:ENCdg ASCII")
@@ -268,8 +271,9 @@ class Oscilloscope:
                 div=10
             new_scale=0
             if value>1000 :
-                new_scale=current_scale_value*mul               
-                self.write(f'HORizontal:SCALE {new_scale}') 
+                pass
+                #new_scale=current_scale_value*mul               
+                #self.write(f'HORizontal:SCALE {new_scale}') 
                 time.sleep(0.3)
             elif value<1E-6:
                 #new_scale=current_scale_value*mul      
@@ -404,7 +408,24 @@ class Oscilloscope:
     def channel_off(self,channel):
        self.write(f"SELECT:CH{channel} OFF")    
 
+    def set_acquire_mode(self,mode:Literal['SAMple', 'PEAKdetect', 'HIRes', 'AVErage', 'ENVelope']):
+       self.write(f"ACQUIRE:MODE {mode}")
+    def get_acquire_mode(self):
+       self.write(f"ACQUIRE:MODE?")
+       
+    def set_trigger_a_edge_source(self,channel:Literal[1,2,3,4]):
+        self.write(f"TRIGGER:A:EDGE:SOURCE CH{channel}")
+    def get_trigger_a_edge_source(self):
+        self.query("TRIGGER:A:EDGE:SOURCE?")
+    def set_trigger_a_edge_slope(self,slope:Literal['RISe','FALL']):
+        self.write(f"TRIGGER:A:EDGE:SLOPE {slope}")
+    def set_trigger_a_edge_slope(self):
+        self.query(f"TRIGGER:A:EDGE:SLOPE?")   
     def get_channel_number():
         return 4
-# %%
+    def set_trigger_a_edge_coupling(self,coupling:Literal['AC','DC','HFRej','LFRej','NOISErej']) :
+        self.write(f"TRIGger:A:EDGE:COUPling {coupling}")   
+    def get_trigger_a_edge_coupling(self) :
+        self.query(f"TRIGger:A:EDGE:COUPling?")   
+       # %%
 
