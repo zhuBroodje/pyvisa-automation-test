@@ -41,7 +41,25 @@ class ElectronicLoad:
             check=False
         if check:
             self.load.write(command)
-    
+    def set_function(self,function):
+        check=True
+        command=''
+        if function.upper()=="C":
+            command = f":FUNCTION CURR"
+        elif function.upper()=="V":
+            command = f":FUNCTION VOLT"
+        elif function.upper()=="P":
+            command = f":FUNCTION POW"
+        elif function.upper()=="R":
+            command = f":FUNCTION RES"
+        else:
+            check=False
+            #FIXME
+            print('Wrong input')
+            command = f":FUNCTION CURR"
+        if check:
+            self.load.write(command)        
+
     def get_current_voltage(self):
         return float((self.query(":MEAS:VOLT?")).rstrip('V'))
     def get_current_current(self):
