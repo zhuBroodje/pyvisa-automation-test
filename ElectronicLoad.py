@@ -39,11 +39,14 @@ class ElectronicLoad:
         elif mode.upper()=="R":
             command = f":RES {value}HM"
         else:
-            check=False
+            print("wrong input,choose from CC,CV,CP,CR")
         if check:
             self.load.write(command)
+
+    def get_function(self):
+        return self.query(":FUNCTION?")
+    
     def set_function(self,function:Literal['C','V','P','R']):
-        check=True
         command=''
         if function.upper()=="C":
             command = f":FUNCTION CURR"
@@ -54,17 +57,17 @@ class ElectronicLoad:
         elif function.upper()=="R":
             command = f":FUNCTION RES"
         else:
-            check=False
-            #FIXME
+            #Debug
             print('Wrong input')
             command = f":FUNCTION CURR"
-        if check:
-            self.load.write(command)        
+        self.load.write(command)        
 
     def get_current_voltage(self):
         return float((self.query(":MEAS:VOLT?")).rstrip('V'))
     def get_current_current(self):
         return float((self.query(":MEAS:CURR?")).rstrip('A'))
+
+
 
     def switch(self,v):
         if v==0:

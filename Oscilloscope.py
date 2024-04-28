@@ -75,10 +75,8 @@ class Oscilloscope:
         return self.query("*IDN?")
     
     def get_waveform(self,channel:Literal[1,2,3,4]):
-        command = f"DATA:SOURCE CH{channel}"
-        self.write(command)
-        self.write("DATA:ENCdg ASCII")
-        bin_wave = self.scope.query_ascii_values('CURV?')
+        self.write(f"DATA:SOURCE CH{channel}")
+        self.write("DATA:ENCdg ASCII")      
         # retrieve scaling factors
         tscale = float(self.query("WFMOUTPRE:XINcr?"))
         tstart = float(self.query('WFMOUTPRE:xzero?'))
@@ -91,29 +89,33 @@ class Oscilloscope:
         
         total_time=total_time = tscale * record
         tstop = tstart + total_time
-        time_space=np.linspace(tstart,tstop,num=record,endpoint=False)
-        unscaled_ts=time_space
+        unscaled_ts=np.linspace(tstart,tstop,num=record,endpoint=False)
+        
+        bin_wave = self.scope.query_ascii_values('CURV?')
+        unscaled_wave = np.array(bin_wave, dtype='double')  
+
         display_t_scale=float(self.query('HORIZONTAL:SCALE?'))
         display_t_scale,tunit,factor=self.convert_time_scale(display_t_scale)
 
         display_v_scale=float(self.query(f'CH{channel}:SCALE?'))
         display_v_scale,vunit,factor_v=self.convert_voltage_scale(display_v_scale)
-        unscaled_wave = np.array(bin_wave, dtype='double')
+
+        
         scaled_wave = (unscaled_wave - vpos) * vscale + voff
-        time_space=time_space*factor 
-        scaled_wave=scaled_wave*factor_v
+        time_space=unscaled_ts*factor 
+        dispay_wave=scaled_wave*factor_v
 
         plt.figure(figsize=(10, 5))
         plt.xlim(min(time_space),max(time_space))
         plt.xticks(np.arange(min(time_space), max(time_space), display_t_scale))
         plt.ylim(-5*display_v_scale, 5*display_v_scale)
         plt.yticks(np.arange(-5*display_v_scale, 5*display_v_scale,display_v_scale))
-        #print(-5*display_v_scale, 5*display_v_scale,display_v_scale)
         plt.grid(True)
-        plt.plot(time_space,scaled_wave)
+        plt.plot(time_space,dispay_wave)
         plt.xlabel(tunit)
         plt.ylabel(vunit)
         plt.show()
+        return scaled_wave,unscaled_ts
 
     def get_waveform_data(self,channel):
         command = f"DATA:SOURCE CH{channel}"
@@ -134,28 +136,29 @@ class Oscilloscope:
         unscaled_wave = np.array(bin_wave, dtype='double')
         scaled_wave = (unscaled_wave - vpos) * vscale + voff
         return scaled_wave,time_space
-    
-    #FIXME not compledted
+
     def get_waveform_all(self):
-        print("write this function!!!")
-        self.write("DATA:ENCdg ASCII")
-        wave_list=[]
+        active_channel_list=[]
+        #Detect channel in use
         for i in range(self.channel_number):
             s=self.query(f"select:ch{i+1}?")
             if s=='1':
-                wave_list.append(i)
+                active_channel_list.append(i+1)
         wave_data_list=[]
-        for wave in wave_list:
-            command = f"DATA:SOURCE CH{wave+1}"
+      
+        for channel in active_channel_list:
+            command = f"DATA:SOURCE CH{channel}"
             self.write(command)
             bin_wave = self.scope.query_ascii_values('CURV?')
-            vscale = float(self.query('WFMOUTPRE:ymult?')) 
-            vunit=self.query("WFMoutpre:yunit?")
-            voff = float(self.query('wfmoutpre:yzero?')) # reference voltage
-            vpos = float(self.query('WFMOUTPRE:yoff?')) # reference position (level)
-            unscaled_wave = np.array(bin_wave, dtype='double')
-            scaled_wave = (unscaled_wave - vpos) * vscale + voff
-            wave_data_list.append((wave,bin_wave))
+            #vscale = float(self.query('WFMOUTPRE:ymult?')) 
+            #vunit=self.query("WFMoutpre:yunit?")
+            #voff = float(self.query('wfmoutpre:yzero?')) # reference voltage
+            #vpos = float(self.query('WFMOUTPRE:yoff?')) # reference position (level)
+            #unscaled_wave = np.array(bin_wave, dtype='double')
+            #scaled_wave = (unscaled_wave - vpos) * vscale + voff
+            display_v_scale=float(self.query(f'CH{channel}:SCALE?'))
+            wave_data_list.append((channel,bin_wave,display_v_scale))
+          
 
         tunit=self.query("WFMOUTPRE:xunit?")
         record = int(self.query('WFMOUTPRE:nr_pt?'))
@@ -171,15 +174,14 @@ class Oscilloscope:
         display_t_scale=float(self.query('HORIZONTAL:SCALE?'))
         display_t_scale,tunit,factor=self.convert_time_scale(display_t_scale)     
         time_space=time_space*factor 
-        for wave,bin_wave in wave_data_list:
-            l=f"CH{wave+1}"
+        for channel,bin_wave,display_v_scale in wave_data_list:
+            l=f"CH{channel} {display_v_scale}V/div "
             plt.plot(time_space,bin_wave,label=l)
         plt.xlabel(tunit)
-        plt.ylabel(vunit)
-        #plt.ylim(-5*display_v_scale, 5*display_v_scale)
-        #plt.yticks(np.arange(-5*display_v_scale, 5*display_v_scale,display_v_scale))
+        #plt.yticks(np.arange(-125, 125,25))
         plt.legend()
         plt.show()
+        return wave_data_list,time_space
 
     def auto_y_scale(self,channel):       
         self.write(f':MEASUREMENT:IMMed:SOURCE CH{channel}')

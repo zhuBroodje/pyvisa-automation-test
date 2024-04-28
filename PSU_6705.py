@@ -7,6 +7,7 @@
 import serial
 import struct
 import time
+from typing import Literal
 
 #written for hightech 6705 dc power supply
 class PSU_6705:
@@ -45,7 +46,9 @@ class PSU_6705:
         for _ in range(26):            
             byte_data = self.ser.read(1)  
             data_list.append(byte_data)
-        #print(data_list)
+        #I did not write this part'''
+        #D5: CH1 Status：BIT0 CV 、BIT1 CC 、BIT2 SER、BIT3 PAR 、BIT5 OUTPUT
+        #D6: CH2 Status：BIT0 CV 、BIT1 CC 、BIT2 SER、BIT3 PAR 、BIT5 OUTPUT
         self.Ch1_status=data_list[5]
         self.Ch2_status=data_list[6]
         #CH1 outputting voltage data
@@ -139,12 +142,16 @@ class PSU_6705:
         byte_command = bytes.fromhex(command[2:])
         self.ser.write(byte_command)       
 
-    #TODO write this funciton!
-    def set_connection(self):
-        print("sorry I didn't write")
+    def set_connection(self,connection:Literal['Series','Parallel','Cancel']):
         set_series_command='0xF7020A1F010001F893FD'
-        set_parall_command='0xF7020A1F010002f9d3FD'
+        set_parallel_command='0xF7020A1F010002f9d3FD'
         series_parallel_cancel_command='0xF7020A1F0100003852FD'
+        if connection=='Parallel':
+            self.ser.write(set_parallel_command)
+        elif connection=='Series':
+            self.ser.write(set_series_command)
+        else:
+            self.ser.write(series_parallel_cancel_command)
 
     def get_IDN(self):
         return "PeakTech DC POWER SUPPLY 6075"
