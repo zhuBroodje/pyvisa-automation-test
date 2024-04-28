@@ -5,3 +5,7 @@ This is for automating DC power converter test using pyvisa and serial communica
 **Oscilloscope**  Tekronix DPO400 Series, 4channel, VISA supported    
 **DCPowerSupply**  PeakTech 6705, Serial Communication    
 **ElectronicLoad**  Tenma 72 13210, VISA supported    
+
+
+# To DO  
+how to test several PSU 

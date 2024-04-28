@@ -38,15 +38,15 @@ class PowerTester:
         #TODO
         self.load.on()
         self.power_supply.on()
-        #self.set_dc_test_mode()
-        #self.efficiency_current()
-        #self.load_regulation()
+        self.set_dc_test_mode()
+        self.efficiency_current()
+        self.load_regulation()
         #TODO
         #FIXME: channel selection
         self.set_ac_test_mode()
-        #self.swtich_frequency()
+        self.swtich_frequency()
         self.ripple()
-        #self.power_sequence()
+        self.power_sequence()
 
 
     #TODO
@@ -245,8 +245,7 @@ class PowerTester:
         self.power_supply.close()
         print("Test ended")
         
- 
-
+    
     def efficiency_current(self):
         self.doc.add_heading(f'Effiency vs load current',level=2)
         #Note : for debug
