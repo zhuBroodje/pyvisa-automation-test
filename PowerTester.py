@@ -39,8 +39,11 @@ class PowerTester:
         self.load.on()
         self.power_supply.on()
         self.set_dc_test_mode()
+        input("")
         self.efficiency_current()
+        input("")
         self.load_regulation()
+        input("")
         #TODO
         #FIXME: channel selection
         self.set_ac_test_mode()
@@ -97,7 +100,7 @@ class PowerTester:
         plt.xscale(scale)
         x_tick_values = np.linspace(0, max(co_list), 5)
         plt.xticks(x_tick_values, ['{:.2f}'.format(value) for value in x_tick_values])
-        plt.title(f"Switch frequency vs Load current (Vin={self.config['DUT']['input']}V,Vout={self.config['DUT']['ouput']}V)")
+        plt.title(f"Switch frequency vs Load current (Vin={self.config['DUT']['input']}V,Vout={self.config['DUT']['output']}V)")
         plt.ylabel('Freuquency(Hz)')
         plt.xlabel('I_LOAD (A)')
         plt.savefig('Switch frequency vs Load current.png')
@@ -282,7 +285,9 @@ class PowerTester:
         po_array, pi_array = vo_array * co_array, vi_array * ci_array
         efficiency=po_array/pi_array *100
          # Note: for debug
-        print(po_array,pi_array,efficiency)
+        print("po",po_array)
+        print("pi",pi_array)
+        print("eff",efficiency)
 
         plt.figure(figsize=(10, 5))
         plt.plot(co_list, efficiency)
@@ -310,16 +315,16 @@ class PowerTester:
                 if key is not None:
                     settings[key]=value
         min_load, max_load, sample_num,scale = [settings.get(key) for key in ['min_load', 'max_load', 'sample_num','sample_scale']]
-        print(min_load, max_load, sample_num,scale)
+        print(f"min_load{min_load}, max_load{max_load}, sample_num{sample_num},scale{scale}")
         sample_points=self.generate_points(min_load,max_load,sample_num,scale)
         return sample_points,scale    
         
     def load_regulation(self):
         self.doc.add_heading(f'Load regulation',level=2)
         v_list,c_list=[],[]
-        sample_points=self.generate_sample_points('load_regulation')
+        sample_points,scale=self.generate_sample_points('load_regulation')
         #FIXME rounded should be blabla from load
-        sample_points,scale=np.round(sample_points,self.load.get_precision())
+        sample_points=np.round(sample_points,self.load.get_precision())
         for i in range (len(sample_points)):
             self.load.set_mode('C', sample_points[i] )
             time.sleep(2)
