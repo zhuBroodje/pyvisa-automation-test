@@ -18,13 +18,19 @@ test_devices:
 
 DUT:
   part1:
-    device_name:
+    device_name: 12-5 buck
     input: 12 #V
     output: 5 #V
     max_load: #A
     
   part2:
     device_name:
+    input: 12 #V
+    output: 5 #V
+    max_load: #A  
+  
+  part3:
+    device_name: "I dont care"
     input: 12 #V
     output: 5 #V
     max_load: #A  
