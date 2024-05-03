@@ -59,8 +59,8 @@ class Oscilloscope:
         self.write(command)
         time.sleep(0.05)
         
-    def get_measurement(self,index:Literal[1,2,3,4]):
-        return float(self.query(f"MEASUREMENT:MEAS{index}:VALUE?"))
+    def get_measurement(self,index:Literal[1,2,3,4],value:Literal['MEAN','MINImum','MAXimum','STDdev','VALue']='VALUE'):
+        return float(self.query(f"MEASUREMENT:MEAS{index}:{value}?"))
     
     def set_coupling(self,channel:Literal[1,2,3,4],mode):
         command = f"CH{channel}:COUPLING {mode.upper()}"
@@ -154,10 +154,10 @@ class Oscilloscope:
             #vunit=self.query("WFMoutpre:yunit?")
             #voff = float(self.query('wfmoutpre:yzero?')) # reference voltage
             #vpos = float(self.query('WFMOUTPRE:yoff?')) # reference position (level)
-            #unscaled_wave = np.array(bin_wave, dtype='double')
+            unscaled_wave = np.array(bin_wave, dtype='double')
             #scaled_wave = (unscaled_wave - vpos) * vscale + voff
             display_v_scale=float(self.query(f'CH{channel}:SCALE?'))
-            wave_data_list.append((channel,bin_wave,display_v_scale))
+            wave_data_list.append((channel,unscaled_wave,display_v_scale))
           
 
         tunit=self.query("WFMOUTPRE:xunit?")
