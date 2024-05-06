@@ -39,11 +39,8 @@ class PowerTester:
         self.load.on()
         self.power_supply.on()
         self.set_dc_test_mode()
-        input("")
         self.efficiency_current()
-        input("")
         self.load_regulation()
-        input("")
         #TODO
         #FIXME: channel selection
         self.set_ac_test_mode()
@@ -323,13 +320,15 @@ class PowerTester:
         self.doc.add_heading(f'Load regulation',level=2)
         v_list,c_list=[],[]
         sample_points,scale=self.generate_sample_points('load_regulation')
-        #FIXME rounded should be blabla from load
         sample_points=np.round(sample_points,self.load.get_precision())
         for i in range (len(sample_points)):
             self.load.set_mode('C', sample_points[i] )
             time.sleep(2)
-            v_list.append(self.load.get_current_voltage())
-            c_list.append(self.load.get_current_current())
+            v=self.load.get_current_voltage()
+            c=self.load.get_current_current()
+            v_list.append(v)
+            c_list.append(c)
+            print(f"Voltage {v} Current {c}")
         #Debug
         print(v_list,c_list)
         plt.figure(figsize=(10, 5))
