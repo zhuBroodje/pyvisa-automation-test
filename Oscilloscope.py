@@ -74,7 +74,7 @@ class Oscilloscope:
     def get_IDN(self):
         return self.query("*IDN?")
     
-    def get_waveform(self,channel:Literal[1,2,3,4]):
+    def get_waveform(self,channel:Literal[1,2,3,4],plot_title=None):
         self.write(f"DATA:SOURCE CH{channel}")
         self.write("DATA:ENCdg ASCII")      
         # retrieve scaling factors
@@ -114,8 +114,10 @@ class Oscilloscope:
         plt.plot(time_space,dispay_wave)
         plt.xlabel(tunit)
         plt.ylabel(vunit)
+        if plot_title!=None:
+            plt.title(plot_title)
         plt.show()
-        return scaled_wave,unscaled_ts
+        return scaled_wave,unscaled_ts,plt.gcf()
 
     def get_waveform_data(self,channel):
         command = f"DATA:SOURCE CH{channel}"
@@ -137,6 +139,8 @@ class Oscilloscope:
         scaled_wave = (unscaled_wave - vpos) * vscale + voff
         return scaled_wave,time_space
 
+    def get_y_scale(self,channel):
+        return float(self.query(f'CH{channel}:SCALE?'))
     def get_waveform_all(self):
         active_channel_list=[]
         #Detect channel in use
@@ -296,7 +300,8 @@ class Oscilloscope:
 
     def set_t_scale(self,new_scale):
         self.write(f'HORizontal:SCALE {new_scale}') 
-
+    def get_t_scale(self):
+        return float(self.query(f'HORizontal:SCALE?')) 
     def auto_scale(self,channel,init=True,t_scale=0.1,v_scale=10):   
             if init: 
                 self.write(f'HORizontal:SCALE {t_scale}')   
@@ -308,25 +313,27 @@ class Oscilloscope:
             self.auto_y_scale(channel) 
 
     def get_frequency(self,channel,fft=False,fig=False):
+        math=fft
         #print("take 5 average!")
         if not fft:
+            fre=[]
             for i in range(5):
-                fre=list()
+                
                 self.write(f"MEASUrement:IMMed:SOURCE CH{channel}")
                 self.write(f"MEASUrement:IMMed:TYPE FREQUENCY")
                 fre.append(float(self.query("MEASUrement:IMMed:VALUE?")))
                 #time.sleep(0.1)
-            return np.average(fre)
+                median_freq = np.median(fre)
+            max_diff = 0.1 * median_freq  
+            if max(max(fre) - median_freq, median_freq - min(fre)) > max_diff:
+                math = True
+            else:
+                return np.average(fre)
         
-        else:
+        if math:
             wave,t=self.get_waveform_data(channel)
             tscale = float(self.query("WFMoutpre:XINcr?"))
             tstart = float(self.query('WFMoutpre:xzero?'))
-            vscale = float(self.query('WFMoutpre:ymult?')) 
-            voff = float(self.query('WFMoutpre:yzero?')) 
-            vpos = float(self.query('WFMoutpre:yoff?')) 
-            vunit=self.query("WFMoutpre:yunit?")
-            tunit=self.query("WFMoutpre:xunit?")
             record = int(self.query('WFMoutpre:nr_pt?'))
                         
             total_time=total_time = tscale * record
@@ -336,16 +343,20 @@ class Oscilloscope:
             # fft
             fft_result = np.fft.fft(wave)
             freqs = np.fft.fftfreq(len(wave), tscale)
+            fft_result[0]=0
             n=len(wave)
-            main_freq_index = np.argmax(np.abs(fft_result))
-            interp_func = interp1d(range(len(wave)), freqs)
-            main_freq = interp_func(main_freq_index)
-            print("Main Frequency:", main_freq)
-            # find main frequency
-
-            print("frequency",abs(main_freq))
+            num=3
+            peaks = []
+            sorted_indices = np.argsort(fft_result)[::-1]  
+            for index in sorted_indices[:num]:
+                peaks.append((freqs[index], fft_result[index]))
+            main_freq = abs(min([freq for freq, _ in peaks]))
+            
+            #print("frequency",abs(main_freq))
             #print(f"FREQUENCY{ self.conver_freq_scale(abs(main_freq))}=={abs(main_freq)}")
             if fig:
+                for i, (freq, amp) in enumerate(peaks):
+                    print(f"peak {i+1} freq {freq} Hz")
                 # draw spectrum
                 plt.figure(figsize=(10, 5))
                 plt.plot(freqs[:len(freqs)//2], np.abs(fft_result)[:len(freqs)//2])
@@ -360,7 +371,7 @@ class Oscilloscope:
             return abs(main_freq) 
 
     def convert_time_scale(self,scale):
-        if  scale >= 1e-3:
+        if  scale >= 1e-2:
             return scale, 's',1
         elif scale >= 1e-5:
             return scale * 1e3, 'ms',1e3
@@ -423,7 +434,7 @@ class Oscilloscope:
         self.write(f"TRIGGER:A:EDGE:SLOPE {slope}")
     def set_trigger_a_edge_slope(self):
         self.query(f"TRIGGER:A:EDGE:SLOPE?")   
-    def get_channel_number():
+    def get_channel_number(self):
         return 4
     def set_trigger_a_edge_coupling(self,coupling:Literal['AC','DC','HFRej','LFRej','NOISErej']) :
         self.write(f"TRIGger:A:EDGE:COUPling {coupling}")   
@@ -431,3 +442,34 @@ class Oscilloscope:
         self.query(f"TRIGger:A:EDGE:COUPling?")   
        # %%
 
+    def set_measurement_source(self,meas_index,channel):
+
+        self.write(f"MEASUrement:MEAS{meas_index}:SOURCE CH{channel}")
+
+    def nearest_v_scale(self,value):
+        scales = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
+        min_diff = float('inf')
+        nearest_v_scale = 0.001
+        for scale in scales:
+            diff = value/2 - scale
+            if diff >= 0 and diff < min_diff:
+                min_diff = diff
+                nearest_v_scale = scale
+        return nearest_v_scale
+    
+    def nearest_t_scale(self,value):
+        scales = [1, 2, 4]
+        powers = [-9, -8, -7, -6, -5, -4, -3,-2,-1,0] 
+
+        nearest_diff = float('inf')
+        nearest_t_scale = None
+
+        for scale in scales:
+            for power in powers:
+                scale_value = scale * 10 ** power
+                diff = abs(value - scale_value)
+                if diff < nearest_diff:
+                    nearest_diff = diff
+                    nearest_t_scale = scale_value
+
+        return nearest_t_scale

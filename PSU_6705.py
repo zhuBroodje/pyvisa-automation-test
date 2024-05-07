@@ -34,8 +34,8 @@ class PSU_6705:
         self.ser.close()
         print("Serial close.")
     
-    def write(self):
-        self.ser.write()
+    def write(self,command):
+        self.ser.write(command)
     
     def status_inquire(self):
         self.ser.flushInput()
@@ -118,7 +118,7 @@ class PSU_6705:
     
     def switch_output(self,v):
         start_command='0xF7020a1e01000'
-        on_command='0xF7020a1e0100010492fd'
+        on_command= '0xF7020a1e0100010492fd'
         off_command='0xF7020a1e0100000492fd'
         c=''
         if v==0:
