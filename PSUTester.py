@@ -13,8 +13,6 @@ from Oscilloscope import *
 from PSU_6705 import *
 from ElectronicLoad import *
 
-from docx import Document
-from docx.shared import Inches
 from datetime import datetime
 import os
 
@@ -23,10 +21,8 @@ class PSUTester:
         self.oscilloscope = 0
         self.load = 0
         self.power_supply = 0
-        self.config=0
-        self.doc=Document()
+        self.config=0  
         self.folder_path=0
-        self.doc_path=0
 
         self.generate_record_file(config_file) 
         #Configure connection
@@ -43,8 +39,7 @@ class PSUTester:
         dut=self.config['DUT']['device_name']
         self.folder_path = f'{dut} {test_name} {test_date}'
         os.makedirs(self.folder_path)  
-        self.doc_path=f'{self.folder_path}/{dut} {test_name} {test_date}.docx'
-        self.doc.save(self.doc_path)
+
 
     def instrument_connection(self):
         print("******Instrument Connection******")

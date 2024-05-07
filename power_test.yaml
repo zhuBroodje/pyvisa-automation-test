@@ -2,16 +2,16 @@
 test_configuration: 
   test_name: PowerTest
   default:
-    min_load: 0.0001 #A
+    min_load: 0.05 #A
     max_load: 1 #A
     sample_num: 10 #points
     sample_scale: linear
   efficiency: 
-    min_load: 0.01
+    min_load: 0.05
     sample_scale: log
   load regulation: 
   switch frequency: 
-    min_load: 0.1
+    min_load: 0.05
     sample_scale: linear
   ripple: 
   power sequence: 
@@ -61,17 +61,17 @@ test_devices:
       value: 1
   
   power_supply: 
-    path: "COM12"
+    path: "COM11"
     settings:
-      input_voltage: 12 #V
+      input_voltage: 24 #V
       input_current: 1 #A
-      testbord_supply: 5 #V
+      testbord_supply: 3.3 #V
       testbord_supply_current: 1 #A
 
 DUT:
-  device_name: Aggragator DCDC Converter
-  input: 12 #V
-  output: 5 #V
+  device_name: Aggragator DCDC Converter 3V3
+  input: 24 #V
+  output: 3.3 #V
   min_load: 0.01 #A
   max_load: 1 #A
   sample_num: 20 #points

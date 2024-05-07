@@ -1,0 +1,41 @@
+
+test_configuration: 
+  test_name: PowerTest
+  default:
+    min_load: 0.1 # ratio to max load
+    max_load: 1 #ratio to max load
+    sample_num: 10 # sample points between min/max load
+    sample_scale: linear # [linear,log]
+
+test_instrument:
+  oscilloscope: 
+    path: 'USB0::0x0699::0x0401::C020996::INSTR'
+  load:
+    path: "COM9" 
+  power_supply: 
+    path: "COM11"
+
+DUT:
+  device_name: Aggragator Project
+  input: 
+    signal:   "board input 24V"
+    voltage:     24 #V
+    current: 1 #A max
+    channel: 1
+  output:
+    1:
+      signal: "output 3V3"  #TP5
+      voltage: 3.3
+      channel: 2
+      max_load: 1
+      sequence_check: true
+    2:
+      signal: "output 5V5"  #TP7
+      voltage: 5.5
+      channel: 3
+      max_load: 1
+      sequence_check: true
+
+testboard:
+  voltage_supply: 5 #V
+  current_supply: 1 #A maximum
