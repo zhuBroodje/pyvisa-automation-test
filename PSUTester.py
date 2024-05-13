@@ -3,12 +3,12 @@
 
 # In[2]:
 
-
+#BY Sijia Lin 
 import time
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
-
+import csv
 from Oscilloscope import *
 from PSU_6705 import *
 from ElectronicLoad import *
@@ -24,20 +24,19 @@ class PSUTester:
         self.config=0  
         self.folder_path=0
 
-        self.generate_record_file(config_file) 
+        self.generate_record_folder(config_file) 
         #Configure connection
         self.instrument_connection()
         self.instrument_init_config()
 
-    def generate_record_file(self,config_file):
+    def generate_record_folder(self,config_file):
         with open(config_file, 'r') as file:
             config = yaml.safe_load(file)
             self.config = config
-        test_name=self.config['test_configuration']['test_name']
         current_date=datetime.now()
         test_date=current_date.strftime("%Y-%m-%d-%H%M")
         dut=self.config['DUT']['device_name']
-        self.folder_path = f'{dut} {test_name} {test_date}'
+        self.folder_path = f'{dut} Power Test {test_date}'
         os.makedirs(self.folder_path)  
 
 
@@ -49,6 +48,17 @@ class PSUTester:
         self.power_supply = PSU_6705(self.config['test_instrument']['power_supply']['path'])
         #Load connection
         self.load = ElectronicLoad(self.config['test_instrument']['load']['path'])
+        #File for recording test instrument information
+        data=[]
+        data.append(['Oscilloscope',self.oscilloscope.get_IDN()])
+        data.append(['Electronic Load',self.load.get_IDN()])
+        data.append(['DC Power Supply',self.power_supply.get_IDN()])
+        csv_file_path = f'{self.folder_path}/test_instrument.csv'
+        with open(csv_file_path, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerows(data)
+
+
 
     def instrument_init_config(self):
         print("******Instrument Initializing******")
@@ -85,6 +95,7 @@ class PSUTester:
             input("manual change channel")
             if settings['sequence_check']==True:
                 sequence_checks.append(settings['channel'])
+        #TODO sequence test
         if len(sequence_checks)!=0:
             #self.power_sequence_check(sequence_checks)
             pass
@@ -105,9 +116,20 @@ class PSUTester:
         self.set_dc_test_mode(settings['channel'])
  
         #test
-
-        plot_title=f'output DC waveform of signal {settings["signal"]} '
+        '''
+        DC WAVEFORM WITH NO LOAD
+        '''
+        plot_title=f'output DC waveform of signal {settings["signal"]} No load'
         w_dc,t_dc,dc_waveform_plot=self.oscilloscope.get_waveform(settings['channel'],plot_title)
+        dc_waveform_plot_path=f"{self.folder_path}/dc_waveform_plot(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).png"
+        dc_waveform_plot.savefig(dc_waveform_plot_path)
+        dc_waveform_data_path=f"{self.folder_path}/dc_waveform_data(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).csv"
+        data = zip(t_dc, w_dc)
+        with open(dc_waveform_data_path, 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(['Timestamp(s)', 'Voltage(V)'])
+            csv_writer.writerows(data)
+
         #FIXME necessary?
         #1.2 on/off load rise/fall time
         #print("1.2 on/off load rise/fall time")
@@ -118,19 +140,24 @@ class PSUTester:
         vo_list, co_list, vi_list, ci_list,vpp_list = [], [], [], [],[]
         self.load.on()
         self.set_ac_test_mode(settings)
+        ripple_folder_path=f"{self.folder_path}/Ripple(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V)"
+        os.makedirs(ripple_folder_path)
+
         print("sampling")
         for i in range (len(sample_points)):
+            #Changing load
             self.load.set_mode('C',sample_points[i])
             time.sleep(2) #wait for value stablized
 
+            #TODO rewrite auto range
+            #Auto scale oscilloscope range
             new_v_scale=self.oscilloscope.nearest_v_scale(self.oscilloscope.get_measurement(3)/2)
             current_v_scale=self.oscilloscope.get_y_scale(settings['channel'])
             while (current_v_scale!=new_v_scale):
                 self.oscilloscope.set_y_scale(settings['channel'],new_v_scale)
                 time.sleep(0.1)
                 current_v_scale=new_v_scale
-                new_v_scale=self.oscilloscope.nearest_v_scale(self.oscilloscope.get_measurement(3)/2)
-            
+                new_v_scale=self.oscilloscope.nearest_v_scale(self.oscilloscope.get_measurement(3)/2) 
             new_t_scale=self.oscilloscope.nearest_t_scale(1/self.oscilloscope.get_frequency(settings['channel']))
             current_t_scale=self.oscilloscope.get_t_scale()
             while (current_t_scale!=new_t_scale):
@@ -143,26 +170,36 @@ class PSUTester:
             output_v=self.load.get_current_voltage()
             output_c=self.load.get_current_current()
             vpp=self.oscilloscope.get_measurement(3)
-            plot_title=f"ripple waveform under output {output_c }A "
-            w_ac,t_ac,wave_ac=self.oscilloscope.get_waveform(settings['channel'],plot_title)
-            #Note : for debug
-            print(f"output {output_v} {output_c}")
-            vo_list.append(output_v)
-            co_list.append(output_c)
-            vpp_list.append(vpp)
             input_status=self.power_supply.status_inquire()
             #input_v=input_status.get('ch1_out_voltage')
-            # TODO: how to scale?
-            # FIXME: how to get the value?
             input_v=self.oscilloscope.get_measurement(1)
             input_c=input_status.get('ch1_out_current')
 
-            # Note: for debug
-            print(f"input {input_v} {input_c}")
+            '''
+            ripple waveform
+            '''
+            plot_title=f"ripple waveform under output {output_c}A,Vpp={vpp}V "
+            w_ac,t_ac,wave_ac=self.oscilloscope.get_waveform(settings['channel'],plot_title)
+            ripple_waveform_plot_path=f"{ripple_folder_path}/ripple_waveform_plot(load={output_c}A).png"
+            wave_ac.savefig(ripple_waveform_plot_path)
+            ripple_waveform_data_path=f"{ripple_folder_path}/ripple_waveform_data(load={output_c}A).csv"
+            data = zip(t_ac, w_ac)
+            with open(ripple_waveform_data_path, 'w', newline='') as csvfile:
+                csv_writer = csv.writer(csvfile)
+                csv_writer.writerow(['Timestamp(s)', 'Voltage(V)'])
+                csv_writer.writerows(data)
+    
+            vo_list.append(output_v)
+            co_list.append(output_c)
+            vpp_list.append(vpp)
             vi_list.append(input_v)
             ci_list.append(input_c)
+            # Note: for debug
+            print(f"input {input_v}V {input_c}A  output {output_v}V {output_c}A {vpp}VPP")
         
-        #efficiency vs load current
+        '''
+        efficiency vs load current
+        '''
         vo_array, co_array, vi_array, ci_array = np.array(vo_list), np.array(co_list), np.array(vi_list), np.array(ci_list)
         po_array, pi_array = vo_array * co_array, vi_array * ci_array
         efficiency=po_array/pi_array *100
@@ -174,7 +211,18 @@ class PSUTester:
         plt.ylabel('Efficiency(%)')
         plt.xlabel('I_LOAD (A)')
         efficiency_plot=plt.gcf()
-        #load regulation
+        efficiency_plot_path=f"{self.folder_path}/efficiency_plot(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).png"
+        efficiency_plot.savefig(efficiency_plot_path)
+        efficiency_data_path = f"{self.folder_path}/efficiency_data(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).csv"
+        data = zip(co_list, efficiency)
+        with open(efficiency_data_path, 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(['Load Current(A)', 'efficiency(%)'])
+            csv_writer.writerows(data)
+
+        '''
+        load regulation
+        '''
         plt.figure(figsize=(10, 5))
         plt.plot(co_list, vo_list)
         plt.grid(True)
@@ -184,9 +232,58 @@ class PSUTester:
         plt.ylabel('Vout (V)')
         plt.xlabel('I_LOAD (A)')
         load_regulation_plot=plt.gcf()
+        load_regulation_plot_path=f"{self.folder_path}/load_regulation_plot(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).png"
+        load_regulation_plot.savefig(load_regulation_plot_path)
+        load_rugulation_data_path = f"{self.folder_path}/load_regulation_data(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).csv"
+        data = zip(co_list, vo_list)
+        with open(load_rugulation_data_path, 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(['Load Current(A)', 'Vout(V)'])
+            csv_writer.writerows(data)
+
+        '''
+        Ripple PKPK
+        '''
+        plt.figure(figsize=(10, 5))
+        plt.plot(co_list, vpp_list)
+        plt.grid(True)
+        plt.xscale(scale)
+        title=f"Ripple PKPK(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V)"
+        plt.title(title)
+        plt.ylabel('Vout (V)')
+        plt.xlabel('I_LOAD (A)')
+        ripple_pkpk_plot=plt.gcf()
+        ripple_pkpk_plot_path=f"{self.folder_path}/ripple_pkpk_plot(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).png"
+        ripple_pkpk_plot.savefig(ripple_pkpk_plot_path)
+        ripple_pkpk_data_path = f"{self.folder_path}/ripple_pkpk_data(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).csv"
+        data = zip(co_list, vo_list)
+        with open(ripple_pkpk_data_path, 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(['Load Current(A)', 'Vpp(V)'])
+            csv_writer.writerows(data)
+
+        '''
+        All data
+        '''
+        all_data_path=f"{self.folder_path}/all_data(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).csv"
+        data = zip(ci_list,vi_list,co_list, vo_list,vpp_list)
+        with open(all_data_path, 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(['Input Current(A)', 'Input Voltage(V)','Load Current(A)', 'Output Voltage(V)','Vpp(V)'])
+            csv_writer.writerows(data)
+
         #finish
         self.oscilloscope.channel_off(settings['channel'])
-        return [w_dc,t_dc,dc_waveform_plot,efficiency,efficiency_plot,load_regulation_plot]
+
+        ''''ALL FILE SAVED'''
+        #EFFICIENCY: efficiency_plot(png), efficiency_data_path(csv)
+        #LOAD REGULATION: load_regulation_plot(png),load_rugulation_data_path(csv)
+        #RIPPLE PKPK: ripple_pkpk_plot(png),ripple_pkpk_data_path(csv)
+        #all(ci,vi,co,vo,vout_pkpk):all_data_path(csv)
+        #DC waveform: dc_waveform_plot(png), dc_waveform_data_path(CSV)
+        #AC(RIPPLE) waveform:  FOLDER-> PLOTS,CSVS
+        
+        #FIXME return?
     
     def power_sequence_check(self,sequence_checks):
         self.power_supply.off()
@@ -253,6 +350,7 @@ class PSUTester:
                 self.oscilloscope.auto_y_scale(i+1)
                 self.oscilloscope.set_coupling(i+1,'DC')
                 self.oscilloscope.set_bandwidth(i+1,'FULl')
+
     def set_ac_test_mode(self,settings):
         print(f"setting ac mode for ch{settings['channel']}")
         self.oscilloscope.set_measurement_source(3,settings['channel'])
@@ -263,10 +361,10 @@ class PSUTester:
         self.oscilloscope.set_bandwidth(settings['channel'],'TWEnty')
 
     def end_test(self):
+        self.power_supply.off()
+        self.power_supply.close()
         self.load.off()
         self.load.load.close()
         self.oscilloscope.scope.close()
-        self.power_supply.off()
-        self.power_supply.close()
         print("Test ended")
 # In[ ]:
