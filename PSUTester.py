@@ -9,12 +9,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import yaml
 import csv
+import os
+
 from Oscilloscope import *
 from PSU_6705 import *
 from ElectronicLoad import *
-
 from datetime import datetime
-import os
 
 class PSUTester:
     def __init__(self, config_file):
@@ -24,12 +24,13 @@ class PSUTester:
         self.config=0  
         self.folder_path=0
 
-        self.generate_record_folder(config_file) 
+        self.file_config(config_file) 
         #Configure connection
         self.instrument_connection()
         self.instrument_init_config()
 
-    def generate_record_folder(self,config_file):
+    def file_config(self,config_file):
+        print("File Configuration")
         with open(config_file, 'r') as file:
             config = yaml.safe_load(file)
             self.config = config
@@ -41,7 +42,7 @@ class PSUTester:
 
 
     def instrument_connection(self):
-        print("******Instrument Connection******")
+        print("Instrument Connection")
         #Oscilloscope connection
         self.oscilloscope = Oscilloscope(self.config['test_instrument']['oscilloscope']['path'])
         #Power Supply connection    
@@ -61,7 +62,7 @@ class PSUTester:
 
 
     def instrument_init_config(self):
-        print("******Instrument Initializing******")
+        print("Instrument Initializing")
         self.load_init_config()
         self.osc_init_config()
         self.dcps_init_config()
@@ -71,7 +72,6 @@ class PSUTester:
         self.load.set_function('c')
 
     def osc_init_config(self):
-        #FIXME simplify
         self.oscilloscope.add_measurement(1,1, 'MEAN') 
         self.oscilloscope.add_measurement(2,1, 'MEAN') 
         self.oscilloscope.add_measurement(3,1, 'PK2PK')    
@@ -83,22 +83,24 @@ class PSUTester:
         self.power_supply.set_value(2,'c',settings['current_supply'])
     
     def test_flow(self):
-        print("******Test flow start******")
+        print("Test flow start")
         #input configuration
         settings=self.config['DUT']
-        print("******Input configuration******")
+        print("Input configuration")
         self.input_configuration(settings['input'])
         sequence_checks=[]
-        print("******Start PSUs test******")
+        
         for i,settings in settings['output'].items():
             self.run_unit_test(settings)
             input("manual change channel")
             if settings['sequence_check']==True:
                 sequence_checks.append(settings['channel'])
-        #TODO sequence test
+ 
         if len(sequence_checks)!=0:
+            print ("TO check power sequance ")
+            print(sequence_checks)
+            #TODO
             #self.power_sequence_check(sequence_checks)
-            pass
         self.end_test()
 
 
@@ -109,7 +111,7 @@ class PSUTester:
         self.oscilloscope.set_measurement_source(1,input_settings['channel'])
 
     def run_unit_test(self,settings):
-        print(f"******Start unit test on channel {settings['channel']}******")
+        print(f"\nStart unit test on channel {settings['channel']}")
         #config
         self.oscilloscope.channel_on(settings['channel'])
         self.power_supply.on()
@@ -127,7 +129,7 @@ class PSUTester:
         data = zip(t_dc, w_dc)
         with open(dc_waveform_data_path, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
-            csv_writer.writerow(['Timestamp(s)', 'Voltage(V)'])
+            csv_writer.writerow(['Timestamp(s)', 'Voltage(V)'],data)
             csv_writer.writerows(data)
 
         #FIXME necessary?
@@ -210,9 +212,8 @@ class PSUTester:
         plt.title(f"Efficiency vs Load current (Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V)")
         plt.ylabel('Efficiency(%)')
         plt.xlabel('I_LOAD (A)')
-        efficiency_plot=plt.gcf()
         efficiency_plot_path=f"{self.folder_path}/efficiency_plot(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).png"
-        efficiency_plot.savefig(efficiency_plot_path)
+        plt.savefig(efficiency_plot_path)
         efficiency_data_path = f"{self.folder_path}/efficiency_data(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).csv"
         data = zip(co_list, efficiency)
         with open(efficiency_data_path, 'w', newline='') as csvfile:
@@ -231,9 +232,8 @@ class PSUTester:
         plt.title(title)
         plt.ylabel('Vout (V)')
         plt.xlabel('I_LOAD (A)')
-        load_regulation_plot=plt.gcf()
         load_regulation_plot_path=f"{self.folder_path}/load_regulation_plot(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).png"
-        load_regulation_plot.savefig(load_regulation_plot_path)
+        plt.savefig(load_regulation_plot_path)
         load_rugulation_data_path = f"{self.folder_path}/load_regulation_data(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).csv"
         data = zip(co_list, vo_list)
         with open(load_rugulation_data_path, 'w', newline='') as csvfile:
@@ -252,9 +252,8 @@ class PSUTester:
         plt.title(title)
         plt.ylabel('Vout (V)')
         plt.xlabel('I_LOAD (A)')
-        ripple_pkpk_plot=plt.gcf()
         ripple_pkpk_plot_path=f"{self.folder_path}/ripple_pkpk_plot(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).png"
-        ripple_pkpk_plot.savefig(ripple_pkpk_plot_path)
+        plt.savefig(ripple_pkpk_plot_path)
         ripple_pkpk_data_path = f"{self.folder_path}/ripple_pkpk_data(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).csv"
         data = zip(co_list, vo_list)
         with open(ripple_pkpk_data_path, 'w', newline='') as csvfile:
