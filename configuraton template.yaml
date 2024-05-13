@@ -1,0 +1,37 @@
+
+#Power Supply Unit Test Template
+test_configuration: 
+  default:
+    min_load:  # ratio to max load
+    max_load: #ratio to max load
+    sample_num:  # sample points between min/max load
+    sample_scale:  # [linear,log]
+
+test_instrument:
+  oscilloscope: 
+    path: 
+  load:
+    path: 
+  power_supply: 
+    path: 
+
+DUT:
+  device_name:
+  input: 
+    signal:   
+    voltage:      #V
+    current:  #A max
+    channel: 
+  output:
+    1:
+      signal: 
+      voltage:
+      channel: 
+      max_load: 
+      sequence_check: true  #true/false
+    #2:
+    #3:
+
+testboard:
+  voltage_supply:  #V
+  current_supply:  #A maximum
