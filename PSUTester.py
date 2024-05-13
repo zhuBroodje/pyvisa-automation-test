@@ -153,6 +153,8 @@ class PSUTester:
 
             #TODO rewrite auto range
             #Auto scale oscilloscope range
+            #FIXME test if this work
+            #self.oscilloscope.auto_range_vertical(settings['channel'],'PK2PK')
             new_v_scale=self.oscilloscope.nearest_v_scale(self.oscilloscope.get_measurement(3)/2)
             current_v_scale=self.oscilloscope.get_y_scale(settings['channel'])
             while (current_v_scale!=new_v_scale):
@@ -160,6 +162,8 @@ class PSUTester:
                 time.sleep(0.1)
                 current_v_scale=new_v_scale
                 new_v_scale=self.oscilloscope.nearest_v_scale(self.oscilloscope.get_measurement(3)/2) 
+            #FIXME test if this work
+            #self.oscilloscope.auto_range_horizontal(settings['channel'])
             new_t_scale=self.oscilloscope.nearest_t_scale(1/self.oscilloscope.get_frequency(settings['channel']))
             current_t_scale=self.oscilloscope.get_t_scale()
             while (current_t_scale!=new_t_scale):
