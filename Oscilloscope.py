@@ -45,18 +45,13 @@ class Oscilloscope:
         self.write("AUTOset")
         
     def add_measurement(self,index,channel,TYPe):
-        command = f"SELECT: CH{channel} ON"
-        self.write(command)
+        self.write(f"SELECT: CH{channel} ON")
         time.sleep(0.05)
-        command = f"MEASUREMENT:MEAS{index}:SOURCE1 CH{channel}"
-        #print(command)
-        self.write(command)
+        self.write(f"MEASUREMENT:MEAS{index}:SOURCE1 CH{channel}")
         time.sleep(0.05)
-        command = f"MEASUREMENT:MEAS{index}:TYPe {TYPe}"
-        self.write(command)
+        self.write(f"MEASUREMENT:MEAS{index}:TYPe {TYPe}")
         time.sleep(0.05)
-        command = f"MEASUREMENT:MEAS{index}:STATE ON"
-        self.write(command)
+        self.write(f"MEASUREMENT:MEAS{index}:STATE ON")
         time.sleep(0.05)
         
     def get_measurement(self,index:Literal[1,2,3,4],value:Literal['MEAN','MINImum','MAXimum','STDdev','VALue']='VALUE'):
@@ -69,7 +64,16 @@ class Oscilloscope:
     def set_bandwidth(self,channel:Literal[1,2,3,4],mode:Literal['TWEnty','TWOfifty','FULl']):
         command = f"CH{channel}:BANDWIDTH {mode.upper()}"#{|<NR3>}
         self.write(command)
-    #def get_immed_value(self,TYPe)
+    
+    def get_immed_value(self,channel:Literal[1,2,3,4],TYPe:Literal['AMPlitude','AREa','BURst','CARea','CMEan','CRMs','DELay','DISTDUty','EXTINCTDB','EXTINCTPCT',
+                                          'EXTINCTRATIO','EYEHeight','EYEWidth','FALL','FREQuency','HIGH','HITs','LOW','MAXimum','MEAN',
+                                          'MEDian','MINImum','PCROss','PCTCROss','PDUty','PEAKHits','PERIod','PHAse','PK2Pk','PKPKJitter',
+                                          'PKPKNoise','POVershoot','PTOT','PWIdth','QFACtor','RISe','RMS','RMSJitter','PMSNoise','SIGMA1',
+                                          'SIGMA2','SIGMA3','SIXSigmajit','SNRatio','STDdev',' UNDEFINED','WAVEFORMSNCROss',
+                                          'NDUty','NOVershoot','NWIdth','PBASe']):
+        self.write(f"MEASUrement:IMMed:TYPe {TYPe}")
+        self.write(f"MEASUrement:IMMed:SOURCE CH{channel}")
+        return float(self.query(f"MEASUrement:IMMed:Value?"))
     
     def get_IDN(self):
         return self.query("*IDN?")
@@ -328,11 +332,9 @@ class Oscilloscope:
     def set_trigger_a_edge_coupling(self,coupling:Literal['AC','DC','HFRej','LFRej','NOISErej']) :
         self.write(f"TRIGger:A:EDGE:COUPling {coupling}")   
     def get_trigger_a_edge_coupling(self) :
-        self.query(f"TRIGger:A:EDGE:COUPling?")   
-       # %%
+        return self.query(f"TRIGger:A:EDGE:COUPling?")   
 
     def set_measurement_source(self,meas_index,channel):
-
         self.write(f"MEASUrement:MEAS{meas_index}:SOURCE CH{channel}")
 
     def nearest_v_scale(self,value):
@@ -349,10 +351,8 @@ class Oscilloscope:
     def nearest_t_scale(self,value):
         scales = [1, 2, 4]
         powers = [-9, -8, -7, -6, -5, -4, -3,-2,-1,0] 
-
         nearest_diff = float('inf')
         nearest_t_scale = None
-
         for scale in scales:
             for power in powers:
                 scale_value = scale * 10 ** power
@@ -360,5 +360,25 @@ class Oscilloscope:
                 if diff < nearest_diff:
                     nearest_diff = diff
                     nearest_t_scale = scale_value
-
         return nearest_t_scale
+    
+    def auto_range_vertical(self,channel:Literal[1,2,3,4],reference:Literal['AMPlitude','PK2PK']='AMPlitude'):
+            new_v_scale=self.nearest_v_scale( channel,self.get_immed_value(reference)/2 if reference=='PK2PK' else self.get_immed_value(reference))  
+            current_v_scale=self.oscilloscope.get_y_scale(channel)
+            while (current_v_scale!=new_v_scale):
+                self.set_y_scale(channel,new_v_scale)
+                time.sleep(0.1)
+                current_v_scale=new_v_scale
+                new_v_scale=self.nearest_v_scale(channel,self.get_immed_value(reference)/2 if reference=='PK2PK' else self.get_immed_value(reference)) 
+
+    def auto_range_horizontal(self,channel):
+        new_t_scale=self.nearest_t_scale( 1/self.get_frequency(channel))  
+        current_t_scale=self.oscilloscope.get_t_scale()
+        while (current_t_scale!=new_t_scale):
+            self.set_t_scale(new_t_scale)
+            time.sleep(0.1)
+            current_t_scale=new_t_scale
+            new_t_scale=self.nearest_t_scale(1/self.get_frequency(channel))
+            
+       # %%
+       
