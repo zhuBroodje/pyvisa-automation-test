@@ -370,4 +370,5 @@ class PSUTester:
         self.load.load.close()
         self.oscilloscope.scope.close()
         print("Test ended")
+        
 # In[ ]:
