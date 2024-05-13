@@ -187,65 +187,6 @@ class Oscilloscope:
         plt.show()
         return wave_data_list,time_space
 
-    def auto_y_scale(self,channel):       
-        self.write(f':MEASUREMENT:IMMed:SOURCE CH{channel}')
-        self.write( ':MEASUREMENT:IMMed:TYPE HIGH')
-        valid=False
-        t_scale=float(self.query("HORizontal:SCAle?"))
-        while not valid:
-            current_scale=self.query(f'CH{channel}:SCALE?')
-            current_scale_value=float(current_scale)
-            value=float(self.query(':MEASUREMENT:Immed:vALUE?'))
-            mul=0
-            div=0
-            new_scale=0.
-            
-            if(int(current_scale[0])==1):
-                mul=2
-                div=2
-            elif(int(current_scale[0])==2):
-                mul=2.5
-                div=2
-            else:
-                mul=2
-                div=2.5
-            if value>1000 :
-                new_scale=current_scale_value*mul               
-                self.write(f'CH{channel}:SCALE {new_scale}') 
-                time.sleep(1)
-            elif value/current_scale_value<0.2:
-                new_scale=current_scale_value/10
-                if new_scale<0.01:
-                    valid=True
-                else:
-                    self.write(f'CH{channel}:SCALE {new_scale}')  
-            elif value/current_scale_value>5:
-                new_scale=current_scale_value*mul
-                if new_scale<0.01:
-                    valid=True
-                else:
-                    self.write(f'CH{channel}:SCALE {new_scale}')  
-            elif value/current_scale_value<1:
-                new_scale=current_scale_value/div
-                if new_scale<0.01:
-                    valid=True
-                else:
-                    self.write(f'CH{channel}:SCALE {new_scale}')  
-            elif value/current_scale_value<1.8:
-                new_scale=current_scale_value/div
-                if new_scale<0.01:
-                    valid=True
-                else:
-                    self.write(f'CH{channel}:SCALE {new_scale}')  
-            else:
-                valid=True
-
-            if new_scale==0.01:
-                valid=True
-            if value==0:
-                valid=True   
-            time.sleep(15*t_scale) 
-        time.sleep(1)
 
     def set_y_scale(self,channel,value):
         self.write(f'CH{channel}:SCALE {value}') 
@@ -253,64 +194,12 @@ class Oscilloscope:
     def set_offset(self,channel,value):
         self.write(f'CH{channel}:OFFSET {value}') 
 
-    def auto_t_scale(self,channel):
-        self.write(f':MEASUREMENT:IMMed:SOURCE CH{channel}')
-        self.write( ':MEASUREMENT:IMMed:TYPE PERIOD')
-        valid=False
-        while not valid:
-            current_scale=self.query("HORizontal:SCAle?")
-            current_scale_value=float(current_scale)
-            value=float(self.query(':MEASUREMENT:Immed:VALUE?'))
-            mul=1
-            div=1
-            if(int(current_scale[0])==1):
-                mul=2
-                div=2.5
-            elif(int(current_scale[0])==2):
-                mul=2
-                div=2
-            elif(int(current_scale[0])==4):
-                mul=2.5
-                div=2
-            else:
-                mul=10
-                div=10
-            new_scale=0
-            if value>1000 :
-                pass
-                new_scale=current_scale_value*mul               
-                self.write(f'HORizontal:SCALE {new_scale}') 
-                time.sleep(0.3)
-            elif value<1E-6:
-                #new_scale=current_scale_value*mul      
-                self.write(f'HORizontal:SCALE 1E-3') 
-            elif value/current_scale_value>5:
-                new_scale=current_scale_value*mul
-                self.write(f'HORizontal:SCALE {new_scale}')                  
-            elif value/current_scale_value<1:
-                new_scale=current_scale_value/div
-                self.write(f'HORizontal:SCALE {new_scale}')             
-            elif value/current_scale_value<1.8:
-                new_scale=current_scale_value/div
-                self.write(f'HORizontal:SCALE {new_scale}')                   
-            else:
-                valid=True
-            time.sleep(10*new_scale)
-        time.sleep(1)
-
     def set_t_scale(self,new_scale):
         self.write(f'HORizontal:SCALE {new_scale}') 
     def get_t_scale(self):
         return float(self.query(f'HORizontal:SCALE?')) 
-    def auto_scale(self,channel,init=True,t_scale=0.1,v_scale=10):   
-            if init: 
-                self.write(f'HORizontal:SCALE {t_scale}')   
-                time.sleep(5*t_scale)          
-                self.write(f'CH{channel}:SCALE {v_scale}') 
-            #time.sleep(1)
-            self.auto_y_scale(channel)   
-            self.auto_t_scale(channel)
-            self.auto_y_scale(channel) 
+
+
 
     def get_frequency(self,channel,fft=False,fig=False):
         math=fft
