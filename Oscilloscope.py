@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import pyvisa as visa
 import time
 import numpy as np
-from scipy.interpolate import interp1d
+#from scipy.interpolate import interp1d
 from typing import Literal
 
 
@@ -30,7 +30,8 @@ class Oscilloscope:
         self.scope.read_termination = '\n'
         self.scope.write_termination = None
         self.channel_number=channel_num
-        print(f"{self.scope.query('*IDN?')} Connected")
+        self.scope.timeout=10000
+        #print(f"{self.scope.query('*IDN?')}")
 
     def query(self, command):
         return self.scope.query(command)
@@ -42,9 +43,16 @@ class Oscilloscope:
         return self.scope.read(command)
     
     def autoset(self):
-        self.write("AUTOset")
+        self.write("AUTOset EXECUTE")
         
-    def add_measurement(self,index,channel,TYPe):
+    def add_measurement(self,index,channel,TYPe:Literal['AMPlitude','AREa','BURst','CARea','CMEan','CRMs','DELay','DISTDUty',
+                                                        'EXTINCTDB','EXTINCTPCT','EXTINCTRATIO','EYEHeight','EYEWidth','FALL',
+                                                        'FREQuency','HIGH','HITs','LOW','MAXimum','MEAN','MEDian','MINImum','NCROss','NDUty',
+                                                        'NOVershoot','NWIdth','PBASe','PCROss','PCTCROss','PDUty','PEAKHits','PERIod','PHAse',
+                                                        'PK2Pk','PKPKJitter','PKPKNoise','POVershoot','PTOT','PWIdth','QFACtor','RISe','RMS',
+                                                        'RMSJitter','PMSNoise','SIGMA1','SIGMA2','SIGMA3','SIXSigmajit','SNRatio','STDdev',
+                                                        'UNDEFINED',' WAVEFORMS']
+                                                        ,src2=None):
         self.write(f"SELECT: CH{channel} ON")
         time.sleep(0.05)
         self.write(f"MEASUREMENT:MEAS{index}:SOURCE1 CH{channel}")
@@ -53,6 +61,8 @@ class Oscilloscope:
         time.sleep(0.05)
         self.write(f"MEASUREMENT:MEAS{index}:STATE ON")
         time.sleep(0.05)
+        if src2!=None:
+            self.write(f"MEASUREMENT:MEAS{index}:SOURCE2 CH{src2}")
         
     def get_measurement(self,index:Literal[1,2,3,4],value:Literal['MEAN','MINImum','MAXimum','STDdev','VALue']='VALUE'):
         return float(self.query(f"MEASUREMENT:MEAS{index}:{value}?"))
@@ -175,20 +185,23 @@ class Oscilloscope:
         total_time = tscale * record
         tstop = tstart + total_time
         time_space=np.linspace(tstart,tstop,num=record,endpoint=False)
-        
-        plt.grid(True)
-        #plt.figure(figsize=(10, 5))#
+       
         display_t_scale=float(self.query('HORIZONTAL:SCALE?'))
         display_t_scale,tunit,factor=self.convert_time_scale(display_t_scale)     
         time_space=time_space*factor 
+
+        plt.figure(figsize=(10, 5))
+        plt.grid(True)
         for channel,bin_wave,display_v_scale,scaled_wave in wave_data_list:
             l=f"CH{channel} {display_v_scale}V/div "
             plt.plot(time_space,bin_wave,label=l)
         plt.xlabel(tunit)
-        #plt.yticks(np.arange(-125, 125,25))
-        plt.legend()
+        plt.yticks(range(-125, 126, 25))
+        plt.tick_params(axis='y', labelleft=False)
+        plt.axhline(0, color='black', linewidth=2)
+        plt.legend(loc='upper left')
         plt.show()
-        return wave_data_list,time_space
+        return wave_data_list,time_space,plt.gcf()
 
 
     def set_y_scale(self,channel,value):
@@ -209,8 +222,7 @@ class Oscilloscope:
         #print("take 5 average!")
         if not fft:
             fre=[]
-            for i in range(5):
-                
+            for i in range(5):   
                 self.write(f"MEASUrement:IMMed:SOURCE CH{channel}")
                 self.write(f"MEASUrement:IMMed:TYPE FREQUENCY")
                 fre.append(float(self.query("MEASUrement:IMMed:VALUE?")))
@@ -267,8 +279,10 @@ class Oscilloscope:
             return scale, 's',1
         elif scale >= 1e-5:
             return scale * 1e3, 'ms',1e3
-        else:
+        elif scale >= 1e-8:
             return scale * 1e6, 'us',1e6
+        else:
+            return scale*1e9, 'ns',1e9
     def convert_voltage_scale(self,scale):
         if  scale >= 1e-2:
             return scale, 'V',1
@@ -361,18 +375,22 @@ class Oscilloscope:
                     nearest_t_scale = scale_value
         return nearest_t_scale
     
-    def auto_range_vertical(self,channel:Literal[1,2,3,4],reference:Literal['AMPlitude','PK2PK']='AMPlitude'):
-            new_v_scale=self.nearest_v_scale( channel,self.get_immed_value(reference)/2 if reference=='PK2PK' else self.get_immed_value(reference))  
-            current_v_scale=self.oscilloscope.get_y_scale(channel)
+
+    def auto_range_vertical(self,channel:Literal[1,2,3,4],reference:Literal['MEAN','PK2PK']='MEAN'):
+            time.sleep(0.2)
+            new_v_scale=self.nearest_v_scale( self.get_immed_value(channel,reference)/2 if reference=='PK2PK' else self.get_immed_value(channel,reference))  
+            v=self.get_immed_value(channel,reference)
+            current_v_scale=self.get_y_scale(channel)
             while (current_v_scale!=new_v_scale):
                 self.set_y_scale(channel,new_v_scale)
-                time.sleep(0.1)
+                time.sleep(0.2)
                 current_v_scale=new_v_scale
-                new_v_scale=self.nearest_v_scale(channel,self.get_immed_value(reference)/2 if reference=='PK2PK' else self.get_immed_value(reference)) 
-
+                new_v_scale=self.nearest_v_scale(self.get_immed_value(channel,reference)/2 if reference=='PK2PK' else self.get_immed_value(channel,reference)) 
+                v=self.get_immed_value(channel,reference)
+        
     def auto_range_horizontal(self,channel):
         new_t_scale=self.nearest_t_scale( 1/self.get_frequency(channel))  
-        current_t_scale=self.oscilloscope.get_t_scale()
+        current_t_scale=self.get_t_scale()
         while (current_t_scale!=new_t_scale):
             self.set_t_scale(new_t_scale)
             time.sleep(0.1)
