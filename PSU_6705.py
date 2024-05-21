@@ -25,7 +25,7 @@ class PSU_6705:
         self.ch2_setting_current=0
   
         if self.ser.isOpen():
-            print(f"DC Power Supply 6705 at serial {port} is open")
+            print("DC Power Supply 6705 at serial " + port + " is open")
     
     def get_IDN():
         return "PeakTech 6705 DC Power Supply"
@@ -34,8 +34,8 @@ class PSU_6705:
         self.ser.close()
         print("Serial close.")
     
-    def write(self,command):
-        self.ser.write(command)
+    def write(self):
+        self.ser.write()
     
     def status_inquire(self):
         self.ser.flushInput()
@@ -118,7 +118,7 @@ class PSU_6705:
     
     def switch_output(self,v):
         start_command='0xF7020a1e01000'
-        on_command= '0xF7020a1e0100010492fd'
+        on_command='0xF7020a1e0100010492fd'
         off_command='0xF7020a1e0100000492fd'
         c=''
         if v==0:
@@ -143,15 +143,17 @@ class PSU_6705:
         self.ser.write(byte_command)       
 
     def set_connection(self,connection:Literal['Series','Parallel','Cancel']):
-        set_series_command='0xF7020A1F010001F893FD'
-        set_parallel_command='0xF7020A1F010002f9d3FD'
-        series_parallel_cancel_command='0xF7020A1F0100003852FD'
+        byte_command = 0
+        set_series_command="0xF7020A1F010001F893FD"
+        set_parallel_command="0xF7020A1F010002f9d3FD"
+        series_parallel_cancel_command="0xF7020A1F0100003852FD"
         if connection=='Parallel':
-            self.ser.write(set_parallel_command)
+            byte_command = bytes.fromhex(set_parallel_command[2:])
         elif connection=='Series':
-            self.ser.write(set_series_command)
+            byte_command = bytes.fromhex(set_series_command[2:])
         else:
-            self.ser.write(series_parallel_cancel_command)
+            byte_command = bytes.fromhex(series_parallel_cancel_command[2:])
+        self.ser.write(byte_command)
 
     def get_IDN(self):
         return "PeakTech DC POWER SUPPLY 6075"
