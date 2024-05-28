@@ -158,3 +158,4 @@ class PSU_6705:
     def get_IDN(self):
         return "PeakTech DC POWER SUPPLY 6075"
 
+

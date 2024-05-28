@@ -10,11 +10,13 @@ import numpy as np
 import yaml 
 import csv
 import os
+from datetime import datetime
 
 from Oscilloscope import *
 from PSU_6705 import *
 from ElectronicLoad import *
-from datetime import datetime
+from TestBoard import *
+
 
 class PSUTester:
     def __init__(self, config_file):
@@ -23,6 +25,7 @@ class PSUTester:
         self.power_supply = 0
         self.config=0  
         self.folder_path=0
+        self.tb=0
 
         self.file_config(config_file) 
         #Configure connection
@@ -48,6 +51,8 @@ class PSUTester:
         self.power_supply = PSU_6705(self.config['test_instrument']['power_supply']['path'])
         #Load connection
         self.load = ElectronicLoad(self.config['test_instrument']['load']['path'])
+        #test board connection
+        self.tb = TestBoard(self.config['testboard']['port'])
         #File for recording test instrument information
         data=[]
         data.append(['Oscilloscope',self.oscilloscope.get_IDN()])
@@ -63,6 +68,11 @@ class PSUTester:
         self.load_init_config()
         self.osc_init_config()
         self.dcps_init_config()
+ 
+
+    def tb_init_config(self):
+        self.power_supply.set_value(2,'v',self.config['testboard']['voltage_supply'])
+        self.power_supply.set_value(2,'c',self.config['testboard']['current_supply'])
 
     def load_init_config(self):
         self.load.off()
@@ -80,7 +90,8 @@ class PSUTester:
         self.power_supply.off()
         self.power_supply.set_value(2,'v',settings['voltage_supply'])
         self.power_supply.set_value(2,'c',settings['current_supply'])
-    
+
+
     def test_flow(self):
         print("Test flow start")
         #input configuration
@@ -91,7 +102,7 @@ class PSUTester:
         sequence_checks.append([settings['input']['channel'],settings['input']['voltage'],settings['input']['signal']])
         for i,settings in settings['output'].items():
             self.run_unit_test(settings)
-            input("manual change channel")
+            
             if settings['sequence_check']==True:
                 sequence_checks.append([settings['channel'],settings['voltage'],settings['signal']])
         if len(sequence_checks)!=0:
@@ -113,6 +124,8 @@ class PSUTester:
         self.oscilloscope.channel_on(settings['channel'])
         self.load.on()
         self.power_supply.on()
+        self.tb.set_channel(settings['channel'])
+        print(f"set channel to {settings['channel']}")
         time.sleep(1)
         self.set_dc_test_mode(settings['channel']) 
 
@@ -304,9 +317,11 @@ class PSUTester:
         [channel_o1,V_o1],
         ...
         '''
+        
+        self.power_supply.set_value(2,"V",0)
         self.power_supply.off()
         self.load.off()
-
+        self.tb.set_channel(-1)
         sequence_folder_path=f"{self.folder_path}/power_sequence"
         os.mkdir(sequence_folder_path)
         #Get channels that need to be tested
@@ -317,7 +332,8 @@ class PSUTester:
             scale=self.oscilloscope.nearest_v_scale(v)
             self.oscilloscope.set_y_scale(i,scale)
             channel_list.append(i)
-
+        channel_name = [n for _, _, n in sequence_checks]
+        
         #Scale horizontal
         self.oscilloscope.set_t_scale(0.4)
         self.oscilloscope.write("HORIZONTAL:MAIN:DELAY:TIME 8e-1") 
@@ -359,6 +375,7 @@ class PSUTester:
         data = zip(rise_ts,*[w[3] for w in rise_wave_list])
         with open(rise_wave_path, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(channel_name)
             csv_writer.writerows(data)
         with open(sequence_info_path, 'a') as file:
             file.write(rise_info)
@@ -396,8 +413,10 @@ class PSUTester:
                
         fall_wave_path=f"{sequence_folder_path}/fall_waveform.csv"      
         data = zip(fall_time,*[w[3] for w in fall_wave_list])
+
         with open(fall_wave_path, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(channel_name)
             csv_writer.writerows(data)
         with open(sequence_info_path, 'a') as file:
             file.write(fall_info)
@@ -425,7 +444,7 @@ class PSUTester:
 
 
     def set_dc_test_mode(self,channel):
-        print(f"******Set DC test mode for channel {channel}******")
+        print(f"******DC test mode for channel {channel}******")
         self.oscilloscope.set_acquire_mode('SAMple')
         self.oscilloscope.set_t_scale(0.002)
         self.oscilloscope.set_measurement_source(2,channel)
@@ -453,6 +472,7 @@ class PSUTester:
         self.load.off()
         self.load.load.close()
         self.oscilloscope.scope.close()
+        self.tb.close()
         print("Test ended")
 
 # In[ ]:

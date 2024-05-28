@@ -5,16 +5,15 @@
 
 #BY Sijia Lin 
 import serial
-import time
 
-
-class testBoard:
+class TestBoard:
     def __init__(self, port):
         self.ser = serial.Serial(port, 9600)
         if self.ser.isOpen():
             print("test board" + port + " is open")
     def set_channel(self,channel):
         self.ser.write(f'{channel}\n'.encode())    
+        
 
     def close(self):
         channel=-1
