@@ -142,6 +142,8 @@ class PSUTester:
         '''
         DC WAVEFORM WITH NO LOAD
         '''
+        print("*********get no load dC waveform")
+        start=time.time()
         plot_title=f'output DC waveform of signal {settings["signal"]} No load'
         w_dc,t_dc,dc_waveform_plot=self.oscilloscope.get_waveform(settings['channel'],plot_title)
         dc_waveform_plot_path=f"{unit_folder_path}/dc_waveform_plot(Vin={self.config['DUT']['input']['voltage']}V,Vout={settings['voltage']}V).png"
@@ -152,12 +154,16 @@ class PSUTester:
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(['Timestamp(s)', 'Voltage(V)'])
             csv_writer.writerows(data)
+        end=time.time()
+        print(f"*********get no load dC waveform{end-start}")
 
         vo_list, co_list, vi_list, ci_list,vpp_list = [], [], [], [],[]
-
         #DC tests
-        print("sampling DC")
+        print("*********sampling DC")
+        start=time.time()
         for i in range (len(sample_points)):
+            print(f"************start point {i}")
+            start=time.time()
             #Changing load
             self.load.set_mode('C',sample_points[i])
             time.sleep(1.5) #wait for value stablized    
@@ -177,7 +183,10 @@ class PSUTester:
                 ci_list.append(input_c)
             # Note: for debug
             print(f"input {input_v}V {input_c}A  output {output_v}V {output_c}A")
- 
+            end=time.time()
+            print(f"************point {i}:{end-start}")
+        end=time.time()
+        print(f"*********sampling DC{end-start}")
         #efficiency vs load current
         print("efficiency test")
         vo_array, co_array, vi_array, ci_array = np.array(vo_list), np.array(co_list), np.array(vi_list), np.array(ci_list)
@@ -225,12 +234,39 @@ class PSUTester:
         os.makedirs(ripple_folder_path)
         
         load_list=[]
-        print("sampling AC")
+        print("*********sampling AC")
+        start=time.time()
+
+
+      
+        ###########
+        '''
+        self.load.set_mode('C',sample_points[-1])
+        new_v_scale=self.oscilloscope.nearest_v_scale(self.oscilloscope.get_measurement(3)/2)
+        current_v_scale=self.oscilloscope.get_y_scale(settings['channel'])
+        while (current_v_scale!=new_v_scale):
+            self.oscilloscope.set_y_scale(settings['channel'],new_v_scale)
+            time.sleep(0.1)
+            current_v_scale=new_v_scale
+            new_v_scale=self.oscilloscope.nearest_v_scale(self.oscilloscope.get_measurement(3)/2)       
+        #self.oscilloscope.auto_range_horizontal(settings['channel'])
+        new_t_scale=self.oscilloscope.nearest_t_scale(1/self.oscilloscope.get_frequency(settings['channel']))
+        current_t_scale=self.oscilloscope.get_t_scale()
+        while (current_t_scale!=new_t_scale):
+            self.oscilloscope.set_t_scale(new_t_scale)
+            time.sleep(0.1)
+            current_t_scale=new_t_scale
+            new_t_scale=self.oscilloscope.nearest_t_scale(1/self.oscilloscope.get_frequency(settings['channel']))
+        '''
+        ############
         for i in range (len(sample_points)):
+            print(f"************sampling point{i} ")
+            start=time.time()
             #Changing load
             self.load.set_mode('C',sample_points[i])
             time.sleep(1) #wait for value stablized
             #self.oscilloscope.auto_range_vertical(settings['channel'],'PK2PK')
+            ###
             new_v_scale=self.oscilloscope.nearest_v_scale(self.oscilloscope.get_measurement(3)/2)
             current_v_scale=self.oscilloscope.get_y_scale(settings['channel'])
             while (current_v_scale!=new_v_scale):
@@ -246,12 +282,13 @@ class PSUTester:
                 time.sleep(0.1)
                 current_t_scale=new_t_scale
                 new_t_scale=self.oscilloscope.nearest_t_scale(1/self.oscilloscope.get_frequency(settings['channel']))
-
+            ###
             #output_v=self.oscilloscope.get_measurement(2)
             output_c=self.load.get_current_current()
-            vpp=self.oscilloscope.get_measurement(3)      
-            vpp_list.append(vpp)
-            load_list.append(output_c)
+            vpp=self.oscilloscope.get_measurement(3)     
+            if vpp<1e3: 
+                vpp_list.append(vpp)
+                load_list.append(output_c)
             
             #ripple waveform
            
@@ -268,8 +305,10 @@ class PSUTester:
 
             # Note: for debug
             print(f" {output_c}A {vpp}VPP")
-        
-
+            end=time.time()
+            print(f"************sampling point{i} {end-start}")
+        end=time.time()
+        print(f"*********sampling AC {end-start}")
         
         #Ripple PKPK
         plt.figure(figsize=(10, 5))
@@ -324,8 +363,7 @@ class PSUTester:
         [channel_in,V_in],
         [channel_o1,V_o1],
         ...
-        '''
-        
+        '''   
        # self.power_supply.set_value(2,"V",0)
         self.power_supply.set_value(1,'V',0)
         self.power_supply.on()
@@ -365,7 +403,7 @@ class PSUTester:
         while( self.oscilloscope.query("TRIGGER:STATE?") != 'READY'):
             pass
         self.power_supply.set_value(1,'V',sequence_checks[0][1])
-        time.sleep(5)
+        time.sleep(4)
         rise_wave_list,rise_ts,rise_plot=self.oscilloscope.get_waveform_all()
         #Generate file
         rise_info='Power up\n'
@@ -406,7 +444,7 @@ class PSUTester:
             pass
         #self.power_supply.off()
         self.power_supply.set_value(1,'V',0)
-        time.sleep(5)
+        time.sleep(4)
         fall_wave_list,fall_time,fall_plot=self.oscilloscope.get_waveform_all()
         #Generate file
         fall_info='Power off \n'

@@ -219,16 +219,15 @@ class Oscilloscope:
 
     def get_frequency(self,channel,fft=False,fig=False):
         math=fft
-        #print("take 5 average!")
+        #print("take  average!")
         if not fft:
             fre=[]
-            for i in range(5):   
+            for i in range(3):   
                 self.write(f"MEASUrement:IMMed:SOURCE CH{channel}")
                 self.write(f"MEASUrement:IMMed:TYPE FREQUENCY")
                 fre.append(float(self.query("MEASUrement:IMMed:VALUE?")))
-                #time.sleep(0.1)
                 median_freq = np.median(fre)
-            max_diff = 0.1 * median_freq  
+            max_diff = 0.2 * median_freq  
             if max(max(fre) - median_freq, median_freq - min(fre)) > max_diff:
                 math = True
             else:
@@ -236,28 +235,24 @@ class Oscilloscope:
         
         if math:
             wave,t=self.get_waveform_data(channel)
-            tscale = float(self.query("WFMoutpre:XINcr?"))
-            tstart = float(self.query('WFMoutpre:xzero?'))
+            tscale = float(self.query("WFMoutpre:XINcr?"))        
             record = int(self.query('WFMoutpre:nr_pt?'))
                         
-            total_time=total_time = tscale * record
-            tstop = tstart + total_time
-            time_space=np.linspace(tstart,tstop,num=record,endpoint=False)
+            total_time = tscale * record
+          
+            time_space=np.linspace(0,total_time,num=record,endpoint=False)
                 
             # fft
             fft_result = np.fft.fft(wave)
             freqs = np.fft.fftfreq(len(wave), tscale)
-            fft_result[0]=0
-            n=len(wave)
+            fft_result[0]=0        
             num=3
             peaks = []
             sorted_indices = np.argsort(fft_result)[::-1]  
             for index in sorted_indices[:num]:
                 peaks.append((freqs[index], fft_result[index]))
             main_freq = abs(min([freq for freq, _ in peaks]))
-            
-            #print("frequency",abs(main_freq))
-            #print(f"FREQUENCY{ self.conver_freq_scale(abs(main_freq))}=={abs(main_freq)}")
+
             if fig:
                 for i, (freq, amp) in enumerate(peaks):
                     print(f"peak {i+1} freq {freq} Hz")

@@ -2,7 +2,7 @@ test_configuration:
   default:
     min_load: 0.1 # ratio to max load
     max_load: 1 #ratio to max load
-    sample_num: 2 # sample points between min/max load
+    sample_num: 5 # sample points between min/max load
     sample_scale: linear # [linear,log]
 test_instrument:
   oscilloscope: 

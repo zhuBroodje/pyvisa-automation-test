@@ -46,7 +46,7 @@ class PSU_6705:
         for _ in range(26):            
             byte_data = self.ser.read(1)  
             data_list.append(byte_data)
-        #I did not write this part'''
+        #TODO complete this part
         #D5: CH1 Status：BIT0 CV 、BIT1 CC 、BIT2 SER、BIT3 PAR 、BIT5 OUTPUT
         #D6: CH2 Status：BIT0 CV 、BIT1 CC 、BIT2 SER、BIT3 PAR 、BIT5 OUTPUT
         self.Ch1_status=data_list[5]
