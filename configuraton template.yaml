@@ -1,4 +1,3 @@
-
 #Power Supply Unit Test Template
 test_configuration: 
   default:
@@ -33,5 +32,6 @@ DUT:
     #3:
 
 testboard:
+  port: 
   voltage_supply:  #V
   current_supply:  #A maximum
