@@ -217,7 +217,7 @@ class PSUTester:
             csv_writer.writerows(data)
 
         #load regulation
-        self.logger.info("load test")
+        self.logger.info("Load test")
         plt.figure(figsize=(10, 5))
         plt.plot(co_list, vo_list)
         plt.grid(True)
