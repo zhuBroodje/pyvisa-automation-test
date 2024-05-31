@@ -2,7 +2,7 @@ test_configuration:
   default:
     min_load: 0.1 # ratio to max load
     max_load: 1 #ratio to max load
-    sample_num: 10 # sample points between min/max load
+    sample_num: 2 # sample points between min/max load
     sample_scale: linear # [linear,log]
 test_instrument:
   oscilloscope: 
@@ -10,7 +10,7 @@ test_instrument:
   load:
     path: "COM9" 
   power_supply: 
-    path: "COM5"
+    path: "COM13"
 DUT:
   device_name: Aggragator Project
   input: 
@@ -28,9 +28,10 @@ DUT:
     2:
       signal: "output 5V5"  #TP7
       voltage: 5.5
-      channel: 3
+      channel: 4
       max_load: 1.5
       sequence_check: true
 testboard:
+  port: 'COM10'
   voltage_supply: 5 #V
   current_supply: 1 #A maximum

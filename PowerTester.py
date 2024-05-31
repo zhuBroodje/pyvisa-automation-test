@@ -27,29 +27,24 @@ class PowerTester:
         self.doc=Document()
         self.folder_path=0
         self.doc_path=0
+        self.test_board=0
 
         self.generate_record_file(config_file) 
         #Configure connection
         self.instrument_connection()
         self.instrument_init_config()
 
-
     def test_flow(self):
-        #TODO
         self.load.on()
         self.power_supply.on()
         self.set_dc_test_mode()
         self.efficiency_current()
         self.load_regulation()
-        #TODO
-        #FIXME: channel selection
         self.set_ac_test_mode()
         self.swtich_frequency()
         self.ripple()
         self.power_sequence()
 
-
-    #TODO
     def set_ac_test_mode(self):
         #FIXME: use filter?   
         #FIXME: selecte channel
@@ -57,7 +52,6 @@ class PowerTester:
         #FIXME
         #self.oscilloscope.set_acquire_mode('SAMple')
       
-
     def swtich_frequency(self):
         self.oscilloscope.set_acquire_mode("SAMple")
         #FIXME channel
@@ -191,6 +185,8 @@ class PowerTester:
         self.doc.add_heading(f'Load',level=3)
         self.load = ElectronicLoad(self.config['test_devices']['load']['path'])
         self.doc.add_paragraph(f'idn:{self.load.get_IDN()}')
+        #test board connection
+        self.tb=testBoard()
         #Save test intrument idn to file
         self.doc.save(self.doc_path)
        
